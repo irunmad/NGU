@@ -10,30 +10,58 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Генератор</title>
     <style>
-      :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#ffffff;--br:#e2e8f0;--acc:#0f172a}
-      *{box-sizing:border-box} html,body{height:100%}
-      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;color:var(--fg);
-        background:radial-gradient(1200px 500px at 0% -10%, var(--bg2), transparent 60%), linear-gradient(180deg, var(--bg), #fff 60%)}
-      .wrap{max-width:100%;margin:0 auto;padding:12px}
+      :root{
+        --bg:#f6f9ff; --bg2:#eef2ff; --fg:#0f172a; --muted:#64748b;
+        --card:#fff; --br:#e2e8f0; --acc:#0f172a; --brand:#5eead4;
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{
+        margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif; color:var(--fg);
+        background: radial-gradient(1200px 500px at 0% -10%, var(--bg2), transparent 60%), linear-gradient(180deg, var(--bg), #fff 60%);
+      }
+      .wrap{max-width:100%; margin:0 auto; padding:12px}
+
       .topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
-      .logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px}
+      .logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px}
       .chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
-      fieldset{border:1px solid var(--br);border-radius:12px;padding:10px 12px;min-width:min(100%,260px);background:var(--card)}
+
+      fieldset{border:1px solid var(--br);border-radius:12px;padding:8px 10px;background:var(--card)}
       legend{font-size:12px;color:var(--muted);padding:0 6px}
-      .row{display:flex;gap:12px;flex-wrap:nowrap}
-      .row + .row{margin-top:10px}
+      /* компактные рамки под контент */
+      .tight{display:inline-flex; align-items:center; gap:10px; width:auto; min-width:0}
       .controls{display:flex;align-items:center;gap:10px}
-      .tight .controls{gap:8px}
+      .row{display:flex;gap:10px;flex-wrap:wrap}
+      .row + .row{margin-top:10px}
       .age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}
       label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+
       table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
       thead{background:#f1f5f9;color:#475569;font-size:14px}
       th,td{padding:10px 12px;border-top:1px solid var(--br)}
+      /* выравнивание по центру для 2 и 3 колонок */
+      thead th:nth-child(2), thead th:nth-child(3),
+      tbody td:nth-child(2), tbody td:nth-child(3),
+      tfoot td:nth-child(2), tfoot td:nth-child(3){ text-align:center }
       tfoot td{background:#f8fafc;font-weight:600}
-      .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:700}
+
+      .badge{
+        display:inline-block; min-width:28px; padding:2px 8px; text-align:center;
+        border:1px solid var(--br); border-radius:999px; margin-right:8px; font-weight:700; background:#fff;
+      }
+
+      .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800}
       .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
       .btn:disabled{opacity:.5;cursor:not-allowed}
-      .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+
+      /* кнопки на всю ширину области */
+      .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+      @media (max-width:520px){ .actions{grid-template-columns:1fr} }
+
+      .muted{color:var(--muted)}
+      .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
+
+      /* Модалка выбора */
       .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
       .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
       .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -41,7 +69,6 @@
       .card.sel{background:#ecfdf5;border-color:#34d399}
       .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
       .hidden{display:none}
-      .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff}
     </style>
   </head>
   <body>
@@ -52,7 +79,7 @@
         <div id="dataState" class="chip">Загрузка…</div>
       </div>
 
-      <!-- 1-я строка: Категория + Пол -->
+      <!-- Ряд 1: Категорія + Стать (узкая рамка под контент, в одну строку) -->
       <div class="row">
         <fieldset class="tight">
           <legend>Категорія</legend>
@@ -70,7 +97,7 @@
         </fieldset>
       </div>
 
-      <!-- 2-я строка: Возраст под ней Оценка -->
+      <!-- Ряд 2: Вікова група; под ней — Оцінка -->
       <div class="row" style="flex-direction:column">
         <fieldset>
           <legend>Вікова група (1–7)</legend>
@@ -87,141 +114,232 @@
         </fieldset>
       </div>
 
-      <!-- Таблица + кнопки снизу -->
+      <!-- Таблица -->
       <div style="margin-top:12px">
         <table>
-          <thead><tr><th>Упражнение</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
+          <thead>
+            <tr><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr>
+          </thead>
           <tbody id="tbody">
-            <tr><td>Медбол</td><td>—</td><td>—</td></tr>
-            <tr><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
-            <tr><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
+            <tr><td><span class="badge">1</span>Медбол</td><td>—</td><td>—</td></tr>
+            <tr><td><span class="badge">2/14</span>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
+            <tr><td><span class="badge">32б</span>Функц. витривалість</td><td>—</td><td>—</td></tr>
           </tbody>
-          <tfoot><tr><td>Сумма баллов</td><td>—</td><td id="sum">0</td></tr></tfoot>
+          <tfoot><tr><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
         </table>
+
+        <!-- Кнопки на всю ширину -->
         <div class="actions">
-          <button class="btn" id="editBtn">Редактировать</button>
-          <button class="btn primary" id="genBtn" disabled>Сгенерировать</button>
+          <button class="btn" id="editBtn">Редагувати</button>
+          <button class="btn primary" id="genBtn" disabled>Генерувати</button>
         </div>
       </div>
 
-      <div id="loadBox" class="loading">Данные шкал загружаются…</div>
+      <div id="loadBox" class="loading">Дані шкал завантажуються…</div>
     </div>
 
-    <!-- Модалка выбора 3 упражнений -->
+    <!-- Модалка выбора 3 вправ -->
     <div class="modal-back" id="modalBack">
       <div class="modal">
         <div class="topbar2">
-          <div style="font-weight:700">Выбери 3 упражнения</div>
-          <button class="btn" id="closeModal">Закрыть</button>
+          <div style="font-weight:700">Обери 3 вправи</div>
+          <button class="btn" id="closeModal">Закрити</button>
         </div>
         <div class="cards" id="cardList"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-          <div id="selCount" class="chip">Выбрано: 0/3</div>
+          <div id="selCount" class="muted">Обрано: 0/3</div>
           <button class="btn primary" id="applySel" disabled>Готово</button>
         </div>
       </div>
     </div>
 
     <script>
+      /* ------------ УТИЛЫ ------------ */
       const GROUPED_ID = '2or14';
-      let category='2', sex='M', ageGroup=2, grade=3;
+      let category = '2', sex = 'M', ageGroup = 2, grade = 3;
       let picked = ['1', GROUPED_ID, '32б'];
 
-      async function loadCSV(url, delim=';'){
-        const t = await fetch(url).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); });
-        const lines = t.replace(/\r/g,'').split('\n').filter(x=>x.trim().length);
-        const head = lines[0].split(delim).map(h=>h.trim());
-        return lines.slice(1).map(line=>{
-          const cols = line.split(delim).map(c=>c.trim()); const o={};
-          head.forEach((h,i)=> o[h] = (cols[i]??'')); return o;
+      function pick(row, names){
+        for(const n of names){
+          for(const k of Object.keys(row)){
+            if (k.trim().toLowerCase() === n.trim().toLowerCase()) return row[k];
+          }
+        }
+        return '';
+      }
+
+      async function loadCSV(url){
+        const txt = await fetch(url).then(r => {
+          if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url);
+          return r.text();
+        });
+        const clean = txt.replace(/^\uFEFF/, '');
+        const firstLine = clean.split(/\r?\n/)[0] || '';
+        const delim = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+        const lines = clean.replace(/\r/g,'').split('\n').filter(x=>x.trim().length);
+        const headers = lines[0].split(delim).map(h=>h.trim());
+        return lines.slice(1).map(line => {
+          const cols = line.split(delim).map(c=>c.trim());
+          const obj = {};
+          headers.forEach((h,i)=> obj[h] = (cols[i]===undefined?'':cols[i]));
+          return obj;
         });
       }
 
-      const state = { thresholds:{M:[],J:[]}, scales:{M:{},J:{}}, ready:false };
+      const state = { thresholds: { M: [], J: [] }, scales: { M: {}, J: {} }, ready: false };
 
       async function loadAll(){
-        const badge = document.getElementById('dataState');
+        const dataState = document.getElementById('dataState');
         try{
-          const [thM, thW, scM, scW] = await Promise.all([
+          const [thM_raw, thW_raw, scM_raw, scW_raw] = await Promise.all([
             loadCSV('./data/thresholds_men.csv'),
             loadCSV('./data/thresholds_women.csv'),
             loadCSV('./data/scales_men.csv'),
             loadCSV('./data/scales_women.csv'),
           ]);
-          state.thresholds.M = thM; state.thresholds.J = thW;
+
+          function normThresholdRows(rows){
+            return rows.map(r => ({
+              age_group: pick(r, ['age_group','вік','вікова група','возрастная группа','группа','група']),
+              category:  (pick(r, ['category','категорія','категория'])||'').replace(/[\s\u00A0]/g,''),
+              min_per_exercise: pick(r, ['min_per_exercise','пороговий мінімум','пороговый минимум','мінімум пороговий']),
+              sum_for_grade_3: pick(r, ['sum_for_grade_3','із трьох вправ','из трёх упражнений','из трех упражнений','сума_3','сумма_3']),
+              sum_for_grade_4: pick(r, ['sum_for_grade_4','із трьох вправ_4','из трех упражнений_4','сума_4','сумма_4']),
+              sum_for_grade_5: pick(r, ['sum_for_grade_5','із трьох вправ_5','из трех упражнений_5','сума_5','сумма_5']),
+            }));
+          }
+          state.thresholds.M = normThresholdRows(thM_raw);
+          state.thresholds.J = normThresholdRows(thW_raw);
 
           function toScales(rows){
-            const byId={};
+            const byId = {};
             for(const r of rows){
-              const id=r.exercise_id;
-              if(!byId[id]) byId[id]={name:r.exercise_name, unit:r.unit, map:{}};
-              byId[id].map[parseInt(r.points,10)] = r.result;
+              const id    = (pick(r, ['exercise_id','id','код','код_вправи'])+'').trim();
+              const name  = pick(r, ['exercise_name','название','назва']);
+              const unit  = pick(r, ['unit','одиниця','единица','ед']);
+              const ptsStr= (pick(r, ['points','баллы','бали','очки'])+'').replace(/\s/g,'');
+              const res   = pick(r, ['result','результат','показник']);
+              const pts   = parseInt(ptsStr,10);
+              if(!byId[id]) byId[id] = { name, unit, map: {} };
+              if(Number.isFinite(pts)) byId[id].map[pts] = res;
             }
             return byId;
           }
-          state.scales.M = toScales(scM);
-          state.scales.J = toScales(scW);
+          state.scales.M = toScales(scM_raw);
+          state.scales.J = toScales(scW_raw);
 
-          badge.textContent='Данные загружены';
-          document.getElementById('genBtn').disabled=false;
+          dataState.textContent = 'Дані завантажені';
+          document.getElementById('genBtn').disabled = false;
           document.getElementById('loadBox').classList.add('hidden');
-          state.ready=true;
+          state.ready = true;
         }catch(e){
-          badge.textContent='Ошибка загрузки';
-          document.getElementById('loadBox').textContent='Ошибка: '+e.message;
+          dataState.textContent = 'Помилка завантаження';
+          document.getElementById('loadBox').textContent = 'Помилка CSV: '+e.message;
           console.error(e);
         }
       }
 
-      // UI init
+      /* ------------ UI ------------ */
       const ageGrid = document.getElementById('ageGrid');
       for(let g=1; g<=7; g++){
-        const lab=document.createElement('label'); lab.className='inline';
-        const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-        inp.addEventListener('change', ()=>{ ageGroup=g; [...ageGrid.querySelectorAll('input')].forEach((el,i)=> el.checked=(i+1)===g); });
+        const lab = document.createElement('label'); lab.className='inline';
+        const inp = document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
+        inp.addEventListener('change', ()=>{ ageGroup=g; [...ageGrid.querySelectorAll('input')].forEach((el,idx)=>{ el.checked=(idx+1)===g; }); });
         lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
       }
-      document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>category=e.target.value));
-      document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>sex=e.target.value));
-      document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>grade=parseInt(e.target.value,10)));
+      document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change', e=>{category=e.target.value;}));
+      document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change', e=>{sex=e.target.value;}));
+      document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change', e=>{grade=parseInt(e.target.value,10);}));      
 
-      const tbody = document.getElementById('tbody'), sumEl=document.getElementById('sum');
+      const tbody = document.getElementById('tbody'); const sumEl = document.getElementById('sum');
+
+      function labelFor(id){ if(id==='1') return 'Медбол'; if(id==='2') return 'Підтягування'; if(id==='14') return 'КСВ'; if(id==='28') return '100 м'; if(id==='31') return '1 км'; if(id==='32б') return 'Функц. витривалість'; if(id===GROUPED_ID) return 'Підтягування / КСВ'; return id; }
+
       function renderRows(rows){
         tbody.innerHTML='';
-        rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.label}</td><td>${r.result}</td><td>${r.points}</td>`; tbody.appendChild(tr); });
-        sumEl.textContent = rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+        rows.forEach(r=>{
+          const num = r.id === GROUPED_ID ? '2/14' : r.id;
+          const tr=document.createElement('tr');
+          tr.innerHTML = `<td><span class="badge">${num}</span>${r.label}</td><td>${r.result}</td><td>${r.points}</td>`;
+          tbody.appendChild(tr);
+        });
+        const total = rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+        sumEl.textContent = total;
       }
-      renderRows([{id:'1',label:'Медбол',result:'—',points:'—'},{id:GROUPED_ID,label:'Підтягування / КСВ',result:'—',points:'—'},{id:'32б',label:'Функц. витривалість',result:'—',points:'—'}]);
 
-      // выбор 3 упражнений
-      const modalBack=document.getElementById('modalBack'), editBtn=document.getElementById('editBtn'), closeModal=document.getElementById('closeModal'), applySel=document.getElementById('applySel'), cardList=document.getElementById('cardList'), selCount=document.getElementById('selCount'); const CHOICES=['1',GROUPED_ID,'28','31','32б']; let tempPicked=[...picked];
-      function labelFor(id){ if(id==='1') return 'Медбол'; if(id==='2') return 'Підтягування'; if(id==='14') return 'КСВ'; if(id==='28') return '100 м'; if(id==='31') return '1 км'; if(id==='32б') return 'Функц. витривалість'; if(id===GROUPED_ID) return 'Підтягування / КСВ'; return id; }
-      function buildCards(){ cardList.innerHTML=''; CHOICES.forEach(id=>{ const div=document.createElement('div'); div.className='card'+(tempPicked.includes(id)?' sel':''); div.textContent=labelFor(id); div.addEventListener('click',()=>{ const i=tempPicked.indexOf(id); if(i>=0) tempPicked.splice(i,1); else { if(tempPicked.length>=3) return; tempPicked.push(id);} buildCards(); }); cardList.appendChild(div); }); selCount.textContent=`Выбрано: ${tempPicked.length}/3`; applySel.disabled = tempPicked.length!==3; }
+      renderRows([
+        {id:'1',label:'Медбол',result:'—',points:'—'},
+        {id:GROUPED_ID,label:'Підтягування / КСВ',result:'—',points:'—'},
+        {id:'32б',label:'Функц. витривалість',result:'—',points:'—'}
+      ]);
+
+      /* ------------ Выбор 3 вправ ------------ */
+      const modalBack=document.getElementById('modalBack');
+      const editBtn=document.getElementById('editBtn');
+      const closeModal=document.getElementById('closeModal');
+      const applySel=document.getElementById('applySel');
+      const cardList=document.getElementById('cardList');
+      const selCount=document.getElementById('selCount');
+      const CHOICES=['1',GROUPED_ID,'28','31','32б']; let tempPicked=[...picked];
+
+      function buildCards(){
+        cardList.innerHTML='';
+        CHOICES.forEach(id=>{
+          const div=document.createElement('div');
+          div.className='card' + (tempPicked.includes(id)?' sel':'');
+          div.textContent = (id===GROUPED_ID? 'Підтягування / КСВ' : labelFor(id));
+          div.addEventListener('click',()=>{
+            const i=tempPicked.indexOf(id);
+            if(i>=0){ tempPicked.splice(i,1); }
+            else { if(tempPicked.length>=3) return; tempPicked.push(id); }
+            buildCards();
+          });
+          cardList.appendChild(div);
+        });
+        selCount.textContent=`Обрано: ${tempPicked.length}/3`;
+        applySel.disabled = tempPicked.length!==3;
+      }
       editBtn.addEventListener('click',()=>{ tempPicked=[...picked]; buildCards(); modalBack.style.display='flex'; });
-      closeModal.addEventListener('click',()=> modalBack.style.display='none');
-      applySel.addEventListener('click',()=>{ if(tempPicked.length!==3) return; picked=[...tempPicked]; renderRows(picked.map(id=>({id,label:labelFor(id),result:'—',points:'—'}))); modalBack.style.display='none'; });
+      closeModal.addEventListener('click',()=>{ modalBack.style.display='none'; });
+      applySel.addEventListener('click',()=>{ if(tempPicked.length!==3) return;
+        picked=[...tempPicked];
+        renderRows(picked.map(id=>({id,label:(id===GROUPED_ID? 'Підтягування / КСВ' : labelFor(id)),result:'—',points:'—'})));
+        modalBack.style.display='none';
+      });
 
-      // генерация
+      /* ------------ Генерация ------------ */
       function onlyNumber(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 }
       function randint(a,b){return Math.floor(a+Math.random()*(b-a+1))}
+
       function activeThreshold(){
         const list = (sex==='M'? state.thresholds.M : state.thresholds.J);
-        const catVal = (category==='3'? '3,4':'2');
-        let best=null, bestDiff=999;
+        const need = (category==='3'? '3,4' : '2');
+        let best=null, bestDiff=1e9;
+
         for(const r of list){
-          if((r.category||'').replace(/\s/g,'') !== catVal) continue;
-          const g = parseInt(r.age_group,10), d = Math.abs(g-ageGroup);
-          if(d<bestDiff){ best=r; bestDiff=d; }
+          const catRaw = String(r.category || '').replace(/[\s\u00A0]/g,'');
+          if (catRaw !== need) continue;
+          const g = parseInt(r.age_group,10);
+          const d = Math.abs(g - ageGroup);
+          if(d < bestDiff){ best = r; bestDiff = d; }
+        }
+        if (!best && list.length){
+          for(const r of list){
+            const g = parseInt(r.age_group,10);
+            const d = Math.abs(g - ageGroup);
+            if(d < bestDiff){ best = r; bestDiff = d; }
+          }
         }
         return best;
       }
       function getScales(){ return sex==='M'? state.scales.M : state.scales.J }
 
       function generate(){
-        if(!state.ready){ alert('Данные ещё не загружены'); return; }
-        const th = activeThreshold(); if(!th){ alert('Нет данных порогов'); return; }
+        if(!state.ready){ alert('Дані ще не завантажені'); return; }
+        const th = activeThreshold();
+        if(!th){ alert('Немає даних порогів для вибраних параметрів'); return; }
         const minPer = onlyNumber(th.min_per_exercise);
-        const s5=onlyNumber(th.sum_for_grade_5), s4=onlyNumber(th.sum_for_grade_4), s3=onlyNumber(th.sum_for_grade_3);
+        const s5 = onlyNumber(th.sum_for_grade_5), s4 = onlyNumber(th.sum_for_grade_4), s3 = onlyNumber(th.sum_for_grade_3);
         let minSum,nextSum;
         if(grade===5){minSum=s5;nextSum=null}
         else if(grade===4){minSum=s4;nextSum=s5}
@@ -231,44 +349,55 @@
         let target;
         if(!nextSum){ target=minSum; }
         else{
-          const x=Math.max(1,nextSum-minSum), r=Math.random();
+          const x=Math.max(1,nextSum-minSum); const r=Math.random();
           let lo=minSum, hi=minSum+Math.floor(0.3*x);
           if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
           else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
           if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);
         }
 
-        const scales=getScales();
+        // Разрешить 2/14
+        const scales = getScales();
         let ids=[...picked];
         if(ids.includes(GROUPED_ID)){
-          ids = ids.map(id=> id===GROUPED_ID ? (sex==='J' ? '14' : (Math.random()<0.8?'2':'14')) : id);
+          if(sex==='J'){ ids = ids.map(id=> id===GROUPED_ID? '14': id); }
+          else { ids = ids.map(id=> id===GROUPED_ID? (Math.random()<0.8? '2':'14'): id); }
         }
-        for(const id of ids){ if(!scales[id]){ alert('Нет шкалы для '+labelFor(id)); return; } }
+        for(const id of ids){ if(!scales[id]){ alert('Немає шкали для '+labelFor(id)); return; } }
 
         const allowed=ids.map(id=> Object.keys(scales[id].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
-        const mean=target/3, devMax=(Math.random()<0.8?0.30:0.40)*mean, lo=Math.max(minPer,Math.floor(mean-devMax)), hi=Math.ceil(mean+devMax);
+        const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
         function resFor(id,pts){const m=scales[id].map; return (m[pts]&&m[pts]!=='-'&&m[pts]!=='—')?m[pts]:null}
 
         let solution=null;
         outer: for(let t=0;t<8000;t++){
-          const c1=allowed[0].filter(v=>v>=lo&&v<=hi), c2=allowed[1].filter(v=>v>=lo&&v<=hi);
+          const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi);
           if(!c1.length||!c2.length) break;
-          const v1=c1[Math.floor(Math.random()*c1.length)], v2=c2[Math.floor(Math.random()*c2.length)];
+          const v1=c1[Math.floor(Math.random()*c1.length)];
+          const v2=c2[Math.floor(Math.random()*c2.length)];
           const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
-          const r1=resFor(ids[0],v1), r2=resFor(ids[1],v2), r3=resFor(ids[2],v3); if(!r1||!r2||!r3) continue;
-          solution=[{id:ids[0],label:labelFor(ids[0]),points:v1,result:r1},{id:ids[1],label:labelFor(ids[1]),points:v2,result:r2},{id:ids[2],label:labelFor(ids[2]),points:v3,result:r3}];
+          const r1=resFor(ids[0],v1), r2=resFor(ids[1],v2), r3=resFor(ids[2],v3);
+          if(!r1||!r2||!r3) continue;
+          solution=[
+            {id:ids[0],label:labelFor(ids[0]),points:v1,result:r1},
+            {id:ids[1],label:labelFor(ids[1]),points:v2,result:r2},
+            {id:ids[2],label:labelFor(ids[2]),points:v3,result:r3},
+          ];
           break outer;
         }
-        if(!solution){ alert('Не удалось подобрать баллы под условия. Измени параметры или шкалы.'); return; }
+        if(!solution){ alert('Не вдалося підібрати бали під умови. Змініть параметри або шкали.'); return; }
         renderRows(solution.map(s=>({id:s.id,label:s.label,result:s.result,points:s.points})));
       }
 
       document.getElementById('genBtn').addEventListener('click',generate);
 
-      if('serviceWorker' in navigator){
-        window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
+      // PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(console.error);
+        });
       }
       loadAll();
     </script>
   </body>
-  </html>
+</html>
