@@ -1,444 +1,424 @@
 <!doctype html>
 <html lang="uk">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0f172a" />
-    <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="Icons/icon-192.png">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Генератор</title>
-    <style>
-      :root{
-        --bg:#f6f9ff; --bg2:#eef2ff; --fg:#0f172a; --muted:#64748b;
-        --card:#fff; --br:#e2e8f0; --acc:#0f172a;
-      }
-      *{box-sizing:border-box}
-      html,body{height:100%}
-      body{
-        margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif; color:var(--fg);
-        background: radial-gradient(1200px 500px at 0% -10%, var(--bg2), transparent 60%), linear-gradient(180deg, var(--bg), #fff 60%);
-      }
-      .wrap{max-width:100%; margin:0 auto; padding:12px}
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#0f172a"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="Icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Генератор</title>
+<style>
+:root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;color:var(--fg);
+background:radial-gradient(1200px 500px at 0% -10%,var(--bg2),transparent 60%),linear-gradient(180deg,var(--bg),#fff 60%)}
+.wrap{max-width:100%;margin:0 auto;padding:12px}
+.topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
+.logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px}
+.chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
+fieldset{border:1px solid var(--br);border-radius:12px;padding:6px 10px;background:var(--card);width:fit-content}
+legend{font-size:12px;color:var(--muted);padding:0 6px}
+.tight{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.row + .row{margin-top:10px}
+.age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}
+label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
+thead{background:#f1f5f9;color:#475569;font-size:14px}
+th,td{padding:10px 12px;border-top:1px solid var(--br)}
+thead th:nth-child(2),thead th:nth-child(3),
+tbody td:nth-child(2),tbody td:nth-child(3),
+tfoot td:nth-child(2),tfoot td:nth-child(3){text-align:center}
+tfoot td{background:#f8fafc;font-weight:600}
+.badge{display:inline-block;min-width:28px;padding:2px 8px;text-align:center;border:1px solid var(--br);border-radius:999px;margin-right:8px;font-weight:700;background:#fff}
+.btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800;width:100%}
+.btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+@media(max-width:520px){.actions{grid-template-columns:1fr}}
+.muted{color:var(--muted)}
+.loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
+.modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{border:1px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;box-shadow:0 2px 10px rgba(2,6,23,.04)}
+.card.sel{background:#ecfdf5;border-color:#34d399}
+.topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">NG</div>
+    <div class="chip">Генератор оцінки</div>
+    <div id="dataState" class="chip">Завантаження…</div>
+  </div>
 
-      .topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
-      .logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px}
-      .chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
-
-      fieldset{border:1px solid var(--br);border-radius:12px;padding:6px 10px;background:var(--card); width:fit-content}
-      legend{font-size:12px;color:var(--muted);padding:0 6px}
-      .tight{display:inline-flex; align-items:center; gap:10px; min-width:0}
-      .controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
-      .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
-      .row + .row{margin-top:10px}
-      .age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}
-      label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-
-      table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
-      thead{background:#f1f5f9;color:#475569;font-size:14px}
-      th,td{padding:10px 12px;border-top:1px solid var(--br)}
-      /* центр для 2-й и 3-й колонок */
-      thead th:nth-child(2), thead th:nth-child(3),
-      tbody td:nth-child(2), tbody td:nth-child(3),
-      tfoot td:nth-child(2), tfoot td:nth-child(3){ text-align:center }
-      tfoot td{background:#f8fafc;font-weight:600}
-
-      .badge{
-        display:inline-block; min-width:28px; padding:2px 8px; text-align:center;
-        border:1px solid var(--br); border-radius:999px; margin-right:8px; font-weight:700; background:#fff;
-      }
-
-      .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800;width:100%}
-      .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
-      .btn:disabled{opacity:.5;cursor:not-allowed}
-
-      /* кнопки на всю ширину */
-      .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-      @media (max-width:520px){ .actions{grid-template-columns:1fr} }
-
-      .muted{color:var(--muted)}
-      .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
-
-      .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
-      .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
-      .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-      .card{border:1px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;box-shadow:0 2px 10px rgba(2,6,23,.04)}
-      .card.sel{background:#ecfdf5;border-color:#34d399}
-      .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-      .hidden{display:none}
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="topbar">
-        <div class="logo">NG</div>
-        <div class="chip">Генератор оцінки</div>
-        <div id="dataState" class="chip">Завантаження…</div>
+  <!-- Категорія + Стать -->
+  <div class="row">
+    <fieldset class="tight">
+      <legend>Категорія</legend>
+      <div class="controls">
+        <label class="inline"><input type="radio" name="cat" value="2" checked><span>2</span></label>
+        <label class="inline"><input type="radio" name="cat" value="3"><span>3</span></label>
       </div>
-
-      <!-- Ряд 1: Категорія + Стать (узкие рамки в одну строку) -->
-      <div class="row">
-        <fieldset class="tight">
-          <legend>Категорія</legend>
-          <div class="controls">
-            <label class="inline"><input type="radio" name="cat" value="2" checked> <span>2</span></label>
-            <label class="inline"><input type="radio" name="cat" value="3"> <span>3</span></label>
-          </div>
-        </fieldset>
-        <fieldset class="tight">
-          <legend>Стать</legend>
-          <div class="controls">
-            <label class="inline"><input type="radio" name="sex" value="M" checked> <span>М</span></label>
-            <label class="inline"><input type="radio" name="sex" value="J"> <span>Ж</span></label>
-          </div>
-        </fieldset>
+    </fieldset>
+    <fieldset class="tight">
+      <legend>Стать</legend>
+      <div class="controls">
+        <label class="inline"><input type="radio" name="sex" value="M" checked><span>М</span></label>
+        <label class="inline"><input type="radio" name="sex" value="J"><span>Ж</span></label>
       </div>
+    </fieldset>
+  </div>
 
-      <!-- Ряд 2: Вікова група; під нею — Оцінка -->
-      <div class="row" style="flex-direction:column">
-        <fieldset>
-          <legend>Вікова група (1–7)</legend>
-          <div class="age-grid" id="ageGrid"></div>
-        </fieldset>
-        <fieldset style="margin-top:10px">
-          <legend>Оцінка</legend>
-          <div class="controls">
-            <label class="inline"><input type="radio" name="grade" value="2"> <span>2</span></label>
-            <label class="inline"><input type="radio" name="grade" value="3" checked> <span>3</span></label>
-            <label class="inline"><input type="radio" name="grade" value="4"> <span>4</span></label>
-            <label class="inline"><input type="radio" name="grade" value="5"> <span>5</span></label>
-          </div>
-        </fieldset>
+  <!-- Група + Оцінка -->
+  <div class="row" style="flex-direction:column">
+    <fieldset>
+      <legend>Вікова група (1–7)</legend>
+      <div class="age-grid" id="ageGrid"></div>
+    </fieldset>
+    <fieldset style="margin-top:10px">
+      <legend>Оцінка</legend>
+      <div class="controls">
+        <label class="inline"><input type="radio" name="grade" value="2"><span>2</span></label>
+        <label class="inline"><input type="radio" name="grade" value="3" checked><span>3</span></label>
+        <label class="inline"><input type="radio" name="grade" value="4"><span>4</span></label>
+        <label class="inline"><input type="radio" name="grade" value="5"><span>5</span></label>
       </div>
+    </fieldset>
+  </div>
 
-      <!-- Таблиця -->
-      <div style="margin-top:12px">
-        <table>
-          <thead>
-            <tr><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td><span class="badge">1</span>Метання медболу</td><td>—</td><td>—</td></tr>
-            <tr><td><span class="badge">2/14</span>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
-            <tr><td><span class="badge">32б</span>Функц. витривалість</td><td>—</td><td>—</td></tr>
-          </tbody>
-          <tfoot><tr><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
-        </table>
+  <!-- Таблиця -->
+  <div style="margin-top:12px">
+    <table>
+      <thead><tr><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
+      <tbody id="tbody">
+        <tr><td><span class="badge">1</span>Метання медболу</td><td>—</td><td>—</td></tr>
+        <tr><td><span class="badge">2/14</span>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
+        <tr><td><span class="badge">32б</span>Функц. витривалість</td><td>—</td><td>—</td></tr>
+      </tbody>
+      <tfoot><tr><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
+    </table>
 
-        <div class="actions">
-          <button class="btn" id="editBtn">Редагувати</button>
-          <button class="btn primary" id="genBtn" disabled>Генерувати</button>
-        </div>
-      </div>
-
-      <div id="loadBox" class="loading">Дані шкал завантажуються…</div>
+    <div class="actions">
+      <button class="btn" id="editBtn">Редагувати</button>
+      <button class="btn primary" id="genBtn" disabled>Генерувати</button>
     </div>
+  </div>
 
-    <!-- Модал вибору 3 вправ -->
-    <div class="modal-back" id="modalBack">
-      <div class="modal">
-        <div class="topbar2">
-          <div style="font-weight:700">Обери 3 вправи</div>
-          <button class="btn" id="closeModal">Закрити</button>
-        </div>
-        <div class="cards" id="cardList"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-          <div id="selCount" class="muted">Обрано: 0/3</div>
-          <button class="btn primary" id="applySel" disabled>Готово</button>
-        </div>
-      </div>
+  <div id="loadBox" class="loading">Дані шкал завантажуються…</div>
+</div>
+
+<!-- Модал вибору 3 вправ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <div class="topbar2">
+      <div style="font-weight:700">Обери 3 вправи</div>
+      <button class="btn" id="closeModal">Закрити</button>
     </div>
+    <div class="cards" id="cardList"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <div id="selCount" class="muted">Обрано: 0/3</div>
+      <button class="btn primary" id="applySel" disabled>Готово</button>
+    </div>
+  </div>
+</div>
 
-    <script>
-      /* ---------- Константи та стан ---------- */
-      const GROUPED_ID = '2or14';
-      let category = '2', sex = 'M', ageGroup = 2, grade = 3;
-      let picked = ['1', GROUPED_ID, '32б'];
+<script>
+/* ---------- Утиліти ---------- */
+const GROUPED_ID='2or14';
+let category='2',sex='M',ageGroup=2,grade=3;
+let picked=['1',GROUPED_ID,'32б'];
 
-      const state = { thresholds: { M: [], J: [] }, scales: { M: {}, J: {} }, ready: false };
+function normId(id){
+  return String(id||'').trim().toLowerCase().replace(/\s+/g,'').replace(/b/g,'б');
+}
+function prettyBadge(id){ return id===GROUPED_ID?'2/14':String(id).toUpperCase(); }
+function labelFor(id){
+  const nid=normId(id);
+  if(nid==='1') return 'Метання медболу';
+  if(nid==='2') return 'Підтягування';
+  if(nid==='14') return 'КСВ';
+  if(nid==='28') return '100 м';
+  if(nid==='31') return '1 км';
+  if(nid==='32б') return 'Функц. витривалість';
+  if(id===GROUPED_ID) return 'Підтягування / КСВ';
+  return id;
+}
+function pick(row,names){
+  for(const n of names){
+    for(const k of Object.keys(row)){
+      if(k.trim().toLowerCase()===n.trim().toLowerCase()) return row[k];
+    }
+  } return '';
+}
 
-      /* ---------- Утіліти ---------- */
-      function normId(id){
-        return String(id||'')
-          .trim()
-          .toLowerCase()
-          .replace(/\s+/g,'')
-          .replace(/b/g,'б'); // latin b → кирилична б (32b → 32б)
-      }
-      function prettyBadge(id){ return (id===GROUPED_ID) ? '2/14' : String(id).toUpperCase(); }
-      function labelFor(id){
-        const nid = normId(id);
-        if(nid==='1') return 'Метання медболу';
-        if(nid==='2') return 'Підтягування';
-        if(nid==='14') return 'КСВ';
-        if(nid==='28') return '100 м';
-        if(nid==='31') return '1 км';
-        if(nid==='32б') return 'Функц. витривалість';
-        if(id===GROUPED_ID) return 'Підтягування / КСВ';
-        return id;
-      }
+/* ---------- Лоадеры CSV ---------- */
+// thresholds: дозволяємо TAB, ;, , і |
+async function loadCSVAny(url){
+  const txt=await fetch(url).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text();});
+  const clean=txt.replace(/^\uFEFF/,'');
+  const first=clean.split(/\r?\n/)[0]||'';
+  const delim = first.includes('\t') ? '\t' : (first.includes(';') ? ';' : (first.includes('|') ? '|' : (first.includes(',') ? ',' : '\t')));
+  const lines=clean.split(/\r?\n/).filter(x=>x.trim().length);
+  const headers=lines[0].split(delim).map(h=>h.trim());
+  return lines.slice(1).map(line=>{
+    const cols=line.split(delim).map(c=>c.trim());
+    const obj={}; headers.forEach((h,i)=>obj[h]=(cols[i]===undefined?'':cols[i])); return obj;
+  });
+}
+// scales: дозволяємо TAB, ;, | (кома в «Результат» як десяткова)
+async function loadCSVNoComma(url){
+  const txt=await fetch(url).then(r=>{if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text();});
+  const clean=txt.replace(/^\uFEFF/,'');
+  const first=clean.split(/\r?\n/)[0]||'';
+  const delim = first.includes('\t') ? '\t' : (first.includes(';') ? ';' : (first.includes('|') ? '|' : '\t'));
+  const lines=clean.split(/\r?\n/).filter(x=>x.trim().length);
+  const headers=lines[0].split(delim).map(h=>h.trim());
+  return lines.slice(1).map(line=>{
+    const cols=line.split(delim).map(c=>c.trim());
+    const obj={}; headers.forEach((h,i)=>obj[h]=(cols[i]===undefined?'':cols[i])); return obj;
+  });
+}
 
-      function pick(row, names){
-        for(const n of names){
-          for(const k of Object.keys(row)){
-            if (k.trim().toLowerCase() === n.trim().toLowerCase()) return row[k];
-          }
-        }
-        return '';
-      }
+/* ---------- Стан ---------- */
+const state={thresholds:{M:[],J:[]},scales:{M:{},J:{}},ready:false};
 
-      // CSV/TSV loader: TAB або ';' (коми не використовуємо — в «Результат» коми десяткові)
-      async function loadCSV(url){
-        const txt = await fetch(url).then(r => { if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); });
-        const clean = txt.replace(/^\uFEFF/, ''); // BOM
-        const firstLine = clean.split(/\r?\n/)[0] || '';
-        const delim = firstLine.includes('\t') ? '\t' : (firstLine.includes(';') ? ';' : '\t');
-        const lines = clean.split(/\r?\n/).filter(x => x.trim().length);
-        const headers = lines[0].split(delim).map(h=>h.trim());
-        return lines.slice(1).map(line => {
-          const cols = line.split(delim).map(c=>c.trim());
-          const obj = {};
-          headers.forEach((h,i)=> obj[h] = (cols[i]===undefined?'':cols[i]));
-          return obj;
-        });
-      }
+/* ---------- Загрузка всього ---------- */
+async function loadAll(){
+  const dataState=document.getElementById('dataState');
+  try{
+    const [thM_raw,thW_raw,scM_raw,scW_raw]=await Promise.all([
+      loadCSVAny('./data/thresholds_men.csv'),
+      loadCSVAny('./data/thresholds_women.csv'),
+      loadCSVNoComma('./data/scales_men.csv'),
+      loadCSVNoComma('./data/scales_women.csv'),
+    ]);
 
-      /* ---------- Загрузка CSV ---------- */
-      async function loadAll(){
-        const dataState = document.getElementById('dataState');
-        try{
-          const [thM_raw, thW_raw, scM_raw, scW_raw] = await Promise.all([
-            loadCSV('./data/thresholds_men.csv'),
-            loadCSV('./data/thresholds_women.csv'),
-            loadCSV('./data/scales_men.csv'),
-            loadCSV('./data/scales_women.csv'),
-          ]);
+    function normThresholdRows(rows){
+      return rows.map(r=>({
+        age_group: pick(r,['вік','вікова група','возрастная группа','age_group','група','группа']),
+        category:  (pick(r,['категорія','категория','category'])||'').toString().replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','),
+        min_per_exercise: pick(r,['пороговий мінімум','пороговый минимум','min_per_exercise']),
+        // якщо є лише «із трьох вправ» — беремо як 3ку
+        sum_for_grade_3: pick(r,['із трьох вправ','з трьох вправ','из трёх упражнений','из трех упражнений','sum_for_grade_3']),
+        sum_for_grade_4: pick(r,['із трьох вправ_4','з трьох вправ_4','sum_for_grade_4']),
+        sum_for_grade_5: pick(r,['із трьох вправ_5','з трьох вправ_5','sum_for_grade_5']),
+      }));
+    }
+    state.thresholds.M=normThresholdRows(thM_raw);
+    state.thresholds.J=normThresholdRows(thW_raw);
 
-          // thresholds: приймаємо укр/ru назви
-          function normThresholdRows(rows){
-            return rows.map(r => ({
-              age_group: pick(r, ['вік','вікова група','возрастная группа','age_group','група','группа']),
-              category:  (pick(r, ['категорія','категория','category'])||'').replace(/[\s\u00A0]/g,''),
-              min_per_exercise: pick(r, ['пороговий мінімум','пороговый минимум','min_per_exercise']),
-              sum_for_grade_3: pick(r, ['із трьох вправ','из трёх упражнений','из трех упражнений','sum_for_grade_3']),
-              sum_for_grade_4: pick(r, ['із трьох вправ_4','из трёх упражнений_4','sum_for_grade_4']),
-              sum_for_grade_5: pick(r, ['із трьох вправ_5','из трёх упражнений_5','sum_for_grade_5']),
-            }));
-          }
-          state.thresholds.M = normThresholdRows(thM_raw);
-          state.thresholds.J = normThresholdRows(thW_raw);
+    function toScales(rows){
+      const byId={};
+      function push(id,name,unit,pts,res){ if(!byId[id]) byId[id]={name,unit,map:{}}; byId[id].map[pts]=res; }
+      for(const r of rows){
+        const rawId=(pick(r,['№','#','номер','exercise_id','id','код','код_вправи'])+'').trim();
+        const name = pick(r,['назва','назва вправи','exercise_name','название']);
+        const unit = pick(r,['одиниця','одиница','единица','unit','ед']);
+        const ptsStr=(pick(r,['бал','балл','баллы','бали','очки','points'])+'').replace(/\s/g,'');
+        const res  = pick(r,['результат','result','показник']);
+        const pts  = parseInt(ptsStr,10);
+        if(!Number.isFinite(pts)) continue;
 
-          // scales: точные заголовки из твоих CSV: «№», «Назва», «Одиниця», «Бал», «Результат»
-          function toScales(rows){
-            const byId = {};
-            function push(id, name, unit, pts, res){
-              if(!byId[id]) byId[id] = { name, unit, map: {} };
-              byId[id].map[pts] = res;
-            }
-            for(const r of rows){
-              const rawId = (pick(r, ['№','#','номер','exercise_id','id','код'])+'').trim();
-              const name  = pick(r, ['назва','назва вправи','exercise_name','название']);
-              const unit  = pick(r, ['одиниця','одиница','единица','unit','ед']);
-              const ptsStr= (pick(r, ['бал','балл','баллы','бали','очки','points'])+'').replace(/\s/g,'');
-              const res   = pick(r, ['результат','result','показник']);
-              const pts   = parseInt(ptsStr,10);
-              if(!Number.isFinite(pts)) continue;
-
-              // поддержка "2/14"
-              if (/^\s*\d+\s*\/\s*\d+\s*$/u.test(rawId)) {
-                const parts = rawId.split('/').map(s => normId(s));
-                for (const pid of parts) push(pid, name, unit, pts, res);
-              } else {
-                const id = normId(rawId);
-                push(id, name, unit, pts, res);
-              }
-            }
-            return byId;
-          }
-          state.scales.M = toScales(scM_raw);
-          state.scales.J = toScales(scW_raw);
-
-          dataState.textContent = 'Дані завантажені';
-          document.getElementById('genBtn').disabled = false;
-          document.getElementById('loadBox').classList.add('hidden');
-          state.ready = true;
-        }catch(e){
-          dataState.textContent = 'Помилка завантаження';
-          document.getElementById('loadBox').textContent = 'Помилка CSV: '+e.message;
-          console.error(e);
+        if(/^\s*\d+\s*\/\s*\d+\s*$/u.test(rawId)){
+          const parts=rawId.split('/').map(s=>normId(s));
+          for(const pid of parts) push(pid,name,unit,pts,res);
+        }else{
+          push(normId(rawId),name,unit,pts,res);
         }
       }
+      return byId;
+    }
+    state.scales.M=toScales(scM_raw);
+    state.scales.J=toScales(scW_raw);
 
-      /* ---------- UI ---------- */
-      const ageGrid = document.getElementById('ageGrid');
-      for(let g=1; g<=7; g++){
-        const lab = document.createElement('label'); lab.className='inline';
-        const inp = document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-        inp.addEventListener('change', ()=>{ ageGroup=g; [...ageGrid.querySelectorAll('input')].forEach((el,idx)=>{ el.checked=(idx+1)===g; }); });
-        lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
-      }
-      document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change', e=>{category=e.target.value;}));
-      document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change', e=>{sex=e.target.value;}));
-      document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change', e=>{grade=parseInt(e.target.value,10);}));      
+    // Показать сводку загрузки (для самопроверки)
+    const mKeys=Object.keys(state.scales.M).join(',')||'—';
+    const wKeys=Object.keys(state.scales.J).join(',')||'—';
+    dataState.textContent=`OK: шкали М[${mKeys}] Ж[${wKeys}]`;
+    document.getElementById('genBtn').disabled=false;
+    document.getElementById('loadBox').classList.add('hidden');
+    state.ready=true;
+  }catch(e){
+    dataState.textContent='Помилка завантаження';
+    document.getElementById('loadBox').textContent='Помилка CSV: '+e.message;
+    console.error(e);
+  }
+}
 
-      const tbody = document.getElementById('tbody'); const sumEl = document.getElementById('sum');
+/* ---------- UI ---------- */
+const ageGrid=document.getElementById('ageGrid');
+for(let g=1;g<=7;g++){
+  const lab=document.createElement('label'); lab.className='inline';
+  const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>{el.checked=(idx+1)===g;});});
+  lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
+}
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;}));
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;}));
+document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));      
 
-      function renderRows(rows){
-        tbody.innerHTML='';
-        rows.forEach(r=>{
-          const num = (r.id===GROUPED_ID) ? '2/14' : r.id.toString();
-          const tr=document.createElement('tr');
-          tr.innerHTML = `<td><span class="badge">${num.toUpperCase()}</span>${r.label}</td><td>${r.result}</td><td>${r.points}</td>`;
-          tbody.appendChild(tr);
-        });
-        const total = rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
-        sumEl.textContent = total;
-      }
+const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
+function renderRows(rows){
+  tbody.innerHTML='';
+  rows.forEach(r=>{
+    const num=(r.id===GROUPED_ID)?'2/14':r.id.toString();
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="badge">${num.toUpperCase()}</span>${r.label}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tbody.appendChild(tr);
+  });
+  const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+  sumEl.textContent=total;
+}
+function renderPicked(){
+  renderRows(picked.map(id=>({id,label:(id===GROUPED_ID?'Підтягування / КСВ':labelFor(id)),result:'—',points:'—'})));
+}
+renderPicked();
 
-      function renderPicked(){
-        renderRows(picked.map(id=>({id,label:(id===GROUPED_ID? 'Підтягування / КСВ' : labelFor(id)),result:'—',points:'—'})));
-      }
-      renderPicked();
+/* ---------- Вибір 3 вправ ---------- */
+const modalBack=document.getElementById('modalBack');
+const editBtn=document.getElementById('editBtn');
+const closeModal=document.getElementById('closeModal');
+const applySel=document.getElementById('applySel');
+const cardList=document.getElementById('cardList');
+const selCount=document.getElementById('selCount');
 
-      /* ---------- Вибір 3 вправ ---------- */
-      const modalBack=document.getElementById('modalBack');
-      const editBtn=document.getElementById('editBtn');
-      const closeModal=document.getElementById('closeModal');
-      const applySel=document.getElementById('applySel');
-      const cardList=document.getElementById('cardList');
-      const selCount=document.getElementById('selCount');
+function buildCards(){
+  const CHOICES=['1',GROUPED_ID,'28','31','32б'];
+  cardList.innerHTML='';
+  let temp=[...picked];
+  CHOICES.forEach(id=>{
+    const div=document.createElement('div');
+    div.className='card'+(temp.includes(id)?' sel':'');
+    const badge=(id===GROUPED_ID)?'2/14':id;
+    div.textContent=(id===GROUPED_ID?'Підтягування / КСВ':`${badge.toUpperCase()} · ${labelFor(id)}`);
+    div.addEventListener('click',()=>{
+      const i=temp.indexOf(id);
+      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(id); }
+      picked=[...temp]; buildCards();
+    });
+    cardList.appendChild(div);
+  });
+  selCount.textContent=`Обрано: ${picked.length}/3`;
+  applySel.disabled=(picked.length!==3);
+}
+editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
+closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
+applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
-      function buildCards(){
-        const CHOICES = ['1', GROUPED_ID, '28', '31', '32б']; // 5 варіантів; 2/14 згорнуто
-        cardList.innerHTML='';
-        let tempPicked=[...picked];
-        CHOICES.forEach(id=>{
-          const div=document.createElement('div');
-          div.className='card' + (tempPicked.includes(id)?' sel':'');
-          const badge = (id===GROUPED_ID) ? '2/14' : id;
-          div.textContent = (id===GROUPED_ID? 'Підтягування / КСВ' : `${badge.toUpperCase()} · ${labelFor(id)}`);
-          div.addEventListener('click',()=>{
-            const i=tempPicked.indexOf(id);
-            if(i>=0){ tempPicked.splice(i,1); }
-            else { if(tempPicked.length>=3) return; tempPicked.push(id); }
-            // перерисовка
-            cardList.querySelectorAll('.card').forEach(()=>{});
-            // rebuild
-            picked = tempPicked;
-            buildCards();
-          });
-          cardList.appendChild(div);
-        });
-        selCount.textContent=`Обрано: ${picked.length}/3`;
-        applySel.disabled = picked.length!==3;
-      }
-      editBtn.addEventListener('click',()=>{ buildCards(); modalBack.style.display='flex'; });
-      closeModal.addEventListener('click',()=>{ modalBack.style.display='none'; });
-      applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none'; });
+/* ---------- Генерація ---------- */
+function onlyNumber(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 }
+function randint(a,b){return Math.floor(a+Math.random()*(b-a+1))}
 
-      /* ---------- Генерація ---------- */
-      function onlyNumber(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 }
-      function randint(a,b){return Math.floor(a+Math.random()*(b-a+1))}
+function activeThreshold(){
+  const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
+  if(!list || !list.length) return null;
+  const need=(category==='3'?'3,4':'2');
+  let best=null,bestDiff=1e9;
+  // 1) спочатку точна категорія
+  for(const r of list){
+    const cat=(String(r.category||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','))||'';
+    if(cat!==need) continue;
+    const g=parseInt(r.age_group,10); if(!Number.isFinite(g)) continue;
+    const d=Math.abs(g-ageGroup);
+    if(d<bestDiff){best=r;bestDiff=d;}
+  }
+  // 2) якщо не знайдено — ігноруємо категорію, беремо найближчу по групі
+  if(!best){
+    for(const r of list){
+      const g=parseInt(r.age_group,10); if(!Number.isFinite(g)) continue;
+      const d=Math.abs(g-ageGroup);
+      if(d<bestDiff){best=r;bestDiff=d;}
+    }
+  }
+  return best;
+}
+function getScales(){ return sex==='M'?state.scales.M:state.scales.J }
 
-      function activeThreshold(){
-        const list = (sex==='M'? state.thresholds.M : state.thresholds.J);
-        const need = (category==='3'? '3,4' : '2');
-        let best=null, bestDiff=1e9;
+function generate(){
+  if(!state.ready){ alert('Дані ще не завантажені'); return; }
+  let th=activeThreshold();
 
-        for(const r of list){
-          const catRaw = String(r.category || '').replace(/[\s\u00A0]/g,'');
-          if (catRaw !== need) continue;
-          const g = parseInt(r.age_group,10);
-          const d = Math.abs(g - ageGroup);
-          if(d < bestDiff){ best = r; bestDiff = d; }
-        }
-        if (!best && list.length){
-          for(const r of list){
-            const g = parseInt(r.age_group,10);
-            const d = Math.abs(g - ageGroup);
-            if(d < bestDiff){ best = r; bestDiff = d; }
-          }
-        }
-        return best;
-      }
-      function getScales(){ return sex==='M'? state.scales.M : state.scales.J }
+  // 3) крайній фолбек: якщо пороги взагалі не розпізнані — синтетичні, щоби не зриватися
+  if(!th){
+    th={min_per_exercise:'10',sum_for_grade_3:'60',sum_for_grade_4:'80',sum_for_grade_5:'95'};
+    document.getElementById('dataState').textContent='Fallback пороги (перевір CSV)';
+  }
 
-      function generate(){
-        if(!state.ready){ alert('Дані ще не завантажені'); return; }
-        const th = activeThreshold();
-        if(!th){ alert('Немає даних порогів для вибраних параметрів'); return; }
-        const minPer = onlyNumber(th.min_per_exercise);
-        const s5 = onlyNumber(th.sum_for_grade_5), s4 = onlyNumber(th.sum_for_grade_4), s3 = onlyNumber(th.sum_for_grade_3);
-        let minSum,nextSum;
-        if(grade===5){minSum=s5;nextSum=null}
-        else if(grade===4){minSum=s4;nextSum=s5}
-        else if(grade===3){minSum=s3;nextSum=s4}
-        else {minSum=3*minPer; nextSum=s3? s3:(minSum+15)}
+  const minPer=onlyNumber(th.min_per_exercise);
+  const s5=onlyNumber(th.sum_for_grade_5), s4=onlyNumber(th.sum_for_grade_4), s3=onlyNumber(th.sum_for_grade_3);
+  let minSum,nextSum;
+  if(grade===5){minSum=s5;nextSum=null}
+  else if(grade===4){minSum=s4;nextSum=s5}
+  else if(grade===3){minSum=s3;nextSum=s4}
+  else {minSum=3*minPer; nextSum=s3? s3:(minSum+15)}
 
-        let target;
-        if(!nextSum){ target=minSum; }
-        else{
-          const x=Math.max(1,nextSum-minSum); const r=Math.random();
-          let lo=minSum, hi=minSum+Math.floor(0.3*x);
-          if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
-          else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
-          if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);
-        }
+  let target;
+  if(!nextSum){ target=minSum; }
+  else{
+    const x=Math.max(1,nextSum-minSum); const r=Math.random();
+    let lo=minSum, hi=minSum+Math.floor(0.3*x);
+    if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
+    else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
+    if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);
+  }
 
-        // Розгорнути 2/14 з урахуванням наявних шкал
-        const rawScales = getScales();
-        const scales = rawScales; // вже нормалізовані ключі
-        let ids=[...picked];
-        if(ids.includes(GROUPED_ID)){
-          const has2  = !!scales[normId('2')];
-          const has14 = !!scales[normId('14')];
-          let chosen = null;
-          if (sex === 'J') { chosen = has14 ? '14' : (has2 ? '2' : null); }
-          else { chosen = (Math.random() < 0.8) ? (has2 ? '2' : (has14 ? '14' : null))
-                                               : (has14 ? '14' : (has2 ? '2' : null)); }
-          if (!chosen) { alert('Немає шкали для Підтягування/КСВ'); return; }
-          ids = ids.map(id => id===GROUPED_ID ? chosen : id);
-        }
+  // Розгорнути 2/14 з урахуванням наявних шкал
+  const scales=getScales();
+  let ids=[...picked];
+  if(ids.includes(GROUPED_ID)){
+    const has2=!!scales[normId('2')];
+    const has14=!!scales[normId('14')];
+    let chosen=null;
+    if(sex==='J'){ chosen=has14?'14':(has2?'2':null); }
+    else { chosen=(Math.random()<0.8)?(has2?'2':(has14?'14':null)):(has14?'14':(has2?'2':null)); }
+    if(!chosen){ alert('Немає шкали для Підтягування/КСВ'); return; }
+    ids=ids.map(id=>id===GROUPED_ID?chosen:id);
+  }
 
-        const normIds = ids.map(normId);
-        for(const id of normIds){ if(!scales[id]){ alert('Немає шкали для '+id); return; } }
+  const normIds=ids.map(normId);
+  for(const id of normIds){ if(!scales[id]){ alert('Немає шкали для '+id); return; } }
 
-        const allowed=normIds.map(id=> Object.keys(scales[id].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
-        const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
-        function resFor(id,pts){const m=scales[id].map; return (m[pts]&&m[pts]!=='-'&&m[pts]!=='—')?m[pts]:null}
+  const allowed=normIds.map(id=> Object.keys(scales[id].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
+  const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
+  function resFor(id,pts){const m=scales[id].map; return (m[pts]&&m[pts]!=='-'&&m[pts]!=='—')?m[pts]:null}
 
-        let solution=null;
-        outer: for(let t=0;t<8000;t++){
-          const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi);
-          if(!c1.length||!c2.length) break;
-          const v1=c1[Math.floor(Math.random()*c1.length)];
-          const v2=c2[Math.floor(Math.random()*c2.length)];
-          const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
-          const r1=resFor(normIds[0],v1), r2=resFor(normIds[1],v2), r3=resFor(normIds[2],v3);
-          if(!r1||!r2||!r3) continue;
-          solution=[
-            {id:ids[0],label:labelFor(ids[0]),points:v1,result:r1},
-            {id:ids[1],label:labelFor(ids[1]),points:v2,result:r2},
-            {id:ids[2],label:labelFor(ids[2]),points:v3,result:r3},
-          ];
-          break outer;
-        }
-        if(!solution){ alert('Не вдалося підібрати бали під умови. Змініть параметри або шкали.'); return; }
-        renderRows(solution.map(s=>({id:s.id,label:s.label,result:s.result,points:s.points})));
-      }
+  let solution=null;
+  outer: for(let t=0;t<8000;t++){
+    const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi);
+    if(!c1.length||!c2.length) break;
+    const v1=c1[Math.floor(Math.random()*c1.length)];
+    const v2=c2[Math.floor(Math.random()*c2.length)];
+    const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
+    const r1=resFor(normIds[0],v1), r2=resFor(normIds[1],v2), r3=resFor(normIds[2],v3);
+    if(!r1||!r2||!r3) continue;
+    solution=[
+      {id:ids[0],label:labelFor(ids[0]),points:v1,result:r1},
+      {id:ids[1],label:labelFor(ids[1]),points:v2,result:r2},
+      {id:ids[2],label:labelFor(ids[2]),points:v3,result:r3},
+    ];
+    break outer;
+  }
+  if(!solution){ alert('Не вдалося підібрати бали під умови. Перевір дані шкал.'); return; }
+  renderRows(solution.map(s=>({id:s.id,label:s.label,result:s.result,points:s.points})));
+}
 
-      /* ---------- Події ---------- */
-      document.getElementById('genBtn').addEventListener('click',generate);
-      document.getElementById('editBtn').addEventListener('click',()=>{}); // навіситься у buildCards
+/* ---------- Події ---------- */
+document.getElementById('genBtn').addEventListener('click',generate);
+document.getElementById('editBtn').addEventListener('click',()=>{}); // навіситься у buildCards
 
-      // Реєстрація SW (для PWA, офлайн)
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(console.error);
-        });
-      }
-      loadAll();
-    </script>
-  </body>
+// ініціалізація
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
+}
+loadAll();
+</script>
+</body>
 </html>
