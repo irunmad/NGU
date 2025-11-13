@@ -4,53 +4,64 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0f172a" />
-    <link rel="apple-touch-icon" href="Icons/icon-192.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="Icons/icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Генератор</title>
     <style>
-      :root{--bg:#f7fafc;--fg:#0f172a;--muted:#64748b;--card:#ffffff;--br:#e2e8f0;--acc:#0f172a}
-      *{box-sizing:border-box}
-      html,body{height:100%}
-      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg)}
-      .wrap{max-width:1100px;margin:0 auto;padding:12px}
-      fieldset{border:1px solid var(--br);border-radius:12px;padding:10px 12px;min-width:min(100%,260px)}
+      :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#ffffff;--br:#e2e8f0;--acc:#0f172a}
+      *{box-sizing:border-box} html,body{height:100%}
+      body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;color:var(--fg);
+        background:radial-gradient(1200px 500px at 0% -10%, var(--bg2), transparent 60%), linear-gradient(180deg, var(--bg), #fff 60%)}
+      .wrap{max-width:100%;margin:0 auto;padding:12px}
+      .topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
+      .logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px}
+      .chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
+      fieldset{border:1px solid var(--br);border-radius:12px;padding:10px 12px;min-width:min(100%,260px);background:var(--card)}
       legend{font-size:12px;color:var(--muted);padding:0 6px}
-      .row{display:flex;gap:12px;flex-wrap:nowrap;overflow:visible;padding-bottom:2px}
+      .row{display:flex;gap:12px;flex-wrap:nowrap}
+      .row + .row{margin-top:10px}
       .controls{display:flex;align-items:center;gap:10px}
+      .tight .controls{gap:8px}
       .age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}
       label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-      table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden}
+      table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
       thead{background:#f1f5f9;color:#475569;font-size:14px}
       th,td{padding:10px 12px;border-top:1px solid var(--br)}
       tfoot td{background:#f8fafc;font-weight:600}
-      .grid{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-top:12px}
-      .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+      .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:700}
       .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
       .btn:disabled{opacity:.5;cursor:not-allowed}
-      .muted{color:var(--muted)}
-      .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px}
+      .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+      .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
       .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
       .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-      .card{border:1px solid var(--br);border-radius:12px;padding:12px;cursor:pointer}
+      .card{border:1px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;box-shadow:0 2px 10px rgba(2,6,23,.04)}
       .card.sel{background:#ecfdf5;border-color:#34d399}
-      .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+      .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
       .hidden{display:none}
-      @media (min-width:900px){.grid{grid-template-columns:1fr 220px}}
+      .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff}
     </style>
   </head>
   <body>
     <div class="wrap">
-      <div class="row" style="margin-bottom:10px">
-        <fieldset>
+      <div class="topbar">
+        <div class="logo">NG</div>
+        <div class="chip">Генератор оцінки</div>
+        <div id="dataState" class="chip">Загрузка…</div>
+      </div>
+
+      <!-- 1-я строка: Категория + Пол -->
+      <div class="row">
+        <fieldset class="tight">
           <legend>Категорія</legend>
           <div class="controls">
             <label class="inline"><input type="radio" name="cat" value="2" checked> <span>2</span></label>
             <label class="inline"><input type="radio" name="cat" value="3"> <span>3</span></label>
           </div>
         </fieldset>
-        <fieldset>
+        <fieldset class="tight">
           <legend>Стать</legend>
           <div class="controls">
             <label class="inline"><input type="radio" name="sex" value="M" checked> <span>М</span></label>
@@ -58,12 +69,14 @@
           </div>
         </fieldset>
       </div>
-      <div class="row">
+
+      <!-- 2-я строка: Возраст под ней Оценка -->
+      <div class="row" style="flex-direction:column">
         <fieldset>
           <legend>Вікова група (1–7)</legend>
           <div class="age-grid" id="ageGrid"></div>
         </fieldset>
-        <fieldset>
+        <fieldset style="margin-top:10px">
           <legend>Оцінка</legend>
           <div class="controls">
             <label class="inline"><input type="radio" name="grade" value="2"> <span>2</span></label>
@@ -73,95 +86,189 @@
           </div>
         </fieldset>
       </div>
-      <div class="grid">
-        <div>
-          <table>
-            <thead><tr><th>Упражнение</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
-            <tbody id="tbody">
-              <tr><td>Медбол</td><td>—</td><td>—</td></tr>
-              <tr><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
-              <tr><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
-            </tbody>
-            <tfoot><tr><td>Сумма баллов</td><td>—</td><td id="sum">0</td></tr></tfoot>
-          </table>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Таблица + кнопки снизу -->
+      <div style="margin-top:12px">
+        <table>
+          <thead><tr><th>Упражнение</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
+          <tbody id="tbody">
+            <tr><td>Медбол</td><td>—</td><td>—</td></tr>
+            <tr><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
+            <tr><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
+          </tbody>
+          <tfoot><tr><td>Сумма баллов</td><td>—</td><td id="sum">0</td></tr></tfoot>
+        </table>
+        <div class="actions">
           <button class="btn" id="editBtn">Редактировать</button>
-          <button class="btn primary" id="genBtn">Сгенерировать</button>
+          <button class="btn primary" id="genBtn" disabled>Сгенерировать</button>
         </div>
       </div>
+
+      <div id="loadBox" class="loading">Данные шкал загружаются…</div>
     </div>
+
+    <!-- Модалка выбора 3 упражнений -->
     <div class="modal-back" id="modalBack">
       <div class="modal">
-        <div class="topbar">
+        <div class="topbar2">
           <div style="font-weight:700">Выбери 3 упражнения</div>
           <button class="btn" id="closeModal">Закрыть</button>
         </div>
         <div class="cards" id="cardList"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-          <div id="selCount" class="muted">Выбрано: 0/3</div>
+          <div id="selCount" class="chip">Выбрано: 0/3</div>
           <button class="btn primary" id="applySel" disabled>Готово</button>
         </div>
       </div>
     </div>
+
     <script>
-      const DEMO_THRESHOLDS = {
-        men: [
-          { s:'чоловіки', g:2, c:'2',    min:'15',        s5:95,  s4:85,  s3:70 },
-          { s:'чоловіки', g:3, c:'3, 4', min:'21',        s5:100, s4:90,  s3:75 },
-          { s:'чоловіки', g:4, c:'3, 4', min:'21',        s5:100, s4:90,  s3:75 },
-        ],
-        women: [
-          { s:'жінки',    g:2, c:'2',    min:'13 (18*)',  s5:95,  s4:85,  s3:70 },
-          { s:'жінки',    g:3, c:'3, 4', min:'12 (15*)',  s5:80,  s4:70,  s3:55 },
-        ]
-      };
-      const DEMO_SCALES = {
-        men: {
-          '1':  { name:'Медбол', unit:'м', map:{50:'7,10',45:'6,90',40:'6,70',35:'6,50',33:'6,30',31:'6,10',29:'5,90',27:'5,70',25:'5,50'} },
-          '2':  { name:'Підтягування', unit:'рази', map:{50:'30',49:'29',48:'28',47:'27',46:'26',45:'25',44:'24',43:'23',42:'22',41:'21',40:'20',39:'19',38:'18'} },
-          '14': { name:'КСВ', unit:'с', map:{50:'71',49:'70',48:'69',47:'68',46:'67',45:'66',44:'65',43:'64',42:'63'} },
-          '28': { name:'100 м', unit:'с', map:{50:'8,8',49:'8,9',48:'9,0',47:'9,1',46:'9,2',45:'9,3',44:'9,4',43:'9,5',42:'9,6'} },
-          '31': { name:'1 км', unit:'хв, с', map:{50:'3,30',49:'3,31',48:'3,32',47:'3,33',46:'3,34',45:'3,35',44:'3,36',43:'3,37',42:'3,38'} },
-          '32б':{ name:'Функц. витривалість', unit:'хв, с', map:{50:'12,8',49:'12,9',48:'13,0',47:'13,1',46:'13,2',45:'13,3',44:'13,4',43:'13,5',42:'13,6'} },
-        },
-        women: {
-          '1':  { name:'Медбол', unit:'м', map:{50:'6,50',48:'6,30',46:'6,10',44:'5,90',42:'5,70',40:'5,50',38:'5,30',36:'5,10'} },
-          '14': { name:'КСВ', unit:'с', map:{50:'71',49:'70',48:'69',47:'68',46:'67',45:'66',44:'65',43:'64',42:'63'} },
-          '28': { name:'100 м', unit:'с', map:{50:'9,8',49:'9,9',48:'10,0',47:'10,1',46:'10,2',45:'10,3',44:'10,4',43:'10,5'} },
-          '31': { name:'1 км', unit:'хв, с', map:{50:'4,10',49:'4,12',48:'4,14',47:'4,16',46:'4,18',45:'4,20'} },
-          '32б':{ name:'Функц. витривалість', unit:'хв, с', map:{50:'14,0',49:'14,2',48:'14,4',47:'14,6',46:'14,8',45:'15,0',44:'15,2'} },
-        }
-      };
-      let category = '2', sex = 'M', ageGroup = 2, grade = 3;
       const GROUPED_ID = '2or14';
+      let category='2', sex='M', ageGroup=2, grade=3;
       let picked = ['1', GROUPED_ID, '32б'];
+
+      async function loadCSV(url, delim=';'){
+        const t = await fetch(url).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); });
+        const lines = t.replace(/\r/g,'').split('\n').filter(x=>x.trim().length);
+        const head = lines[0].split(delim).map(h=>h.trim());
+        return lines.slice(1).map(line=>{
+          const cols = line.split(delim).map(c=>c.trim()); const o={};
+          head.forEach((h,i)=> o[h] = (cols[i]??'')); return o;
+        });
+      }
+
+      const state = { thresholds:{M:[],J:[]}, scales:{M:{},J:{}}, ready:false };
+
+      async function loadAll(){
+        const badge = document.getElementById('dataState');
+        try{
+          const [thM, thW, scM, scW] = await Promise.all([
+            loadCSV('./data/thresholds_men.csv'),
+            loadCSV('./data/thresholds_women.csv'),
+            loadCSV('./data/scales_men.csv'),
+            loadCSV('./data/scales_women.csv'),
+          ]);
+          state.thresholds.M = thM; state.thresholds.J = thW;
+
+          function toScales(rows){
+            const byId={};
+            for(const r of rows){
+              const id=r.exercise_id;
+              if(!byId[id]) byId[id]={name:r.exercise_name, unit:r.unit, map:{}};
+              byId[id].map[parseInt(r.points,10)] = r.result;
+            }
+            return byId;
+          }
+          state.scales.M = toScales(scM);
+          state.scales.J = toScales(scW);
+
+          badge.textContent='Данные загружены';
+          document.getElementById('genBtn').disabled=false;
+          document.getElementById('loadBox').classList.add('hidden');
+          state.ready=true;
+        }catch(e){
+          badge.textContent='Ошибка загрузки';
+          document.getElementById('loadBox').textContent='Ошибка: '+e.message;
+          console.error(e);
+        }
+      }
+
+      // UI init
       const ageGrid = document.getElementById('ageGrid');
       for(let g=1; g<=7; g++){
-        const lab = document.createElement('label'); lab.className='inline';
-        const inp = document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-        inp.addEventListener('change', ()=>{ ageGroup=g; [...ageGrid.querySelectorAll('input')].forEach((el,idx)=>{ el.checked=(idx+1)===g; }); });
+        const lab=document.createElement('label'); lab.className='inline';
+        const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
+        inp.addEventListener('change', ()=>{ ageGroup=g; [...ageGrid.querySelectorAll('input')].forEach((el,i)=> el.checked=(i+1)===g); });
         lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
       }
-      document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change', e=>{category=e.target.value;}));
-      document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change', e=>{sex=e.target.value;}));
-      document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change', e=>{grade=parseInt(e.target.value,10);}));
-      const tbody = document.getElementById('tbody'); const sumEl = document.getElementById('sum');
-      function renderRows(rows){ tbody.innerHTML=''; rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${r.label}</td><td>${r.result}</td><td>${r.points}</td>`; tbody.appendChild(tr); }); const total = rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0); sumEl.textContent = total; }
+      document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>category=e.target.value));
+      document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>sex=e.target.value));
+      document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>grade=parseInt(e.target.value,10)));
+
+      const tbody = document.getElementById('tbody'), sumEl=document.getElementById('sum');
+      function renderRows(rows){
+        tbody.innerHTML='';
+        rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.label}</td><td>${r.result}</td><td>${r.points}</td>`; tbody.appendChild(tr); });
+        sumEl.textContent = rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+      }
       renderRows([{id:'1',label:'Медбол',result:'—',points:'—'},{id:GROUPED_ID,label:'Підтягування / КСВ',result:'—',points:'—'},{id:'32б',label:'Функц. витривалість',result:'—',points:'—'}]);
-      const modalBack=document.getElementById('modalBack'); const editBtn=document.getElementById('editBtn'); const closeModal=document.getElementById('closeModal'); const applySel=document.getElementById('applySel'); const cardList=document.getElementById('cardList'); const selCount=document.getElementById('selCount'); const CHOICES=['1',GROUPED_ID,'28','31','32б']; let tempPicked=[...picked];
+
+      // выбор 3 упражнений
+      const modalBack=document.getElementById('modalBack'), editBtn=document.getElementById('editBtn'), closeModal=document.getElementById('closeModal'), applySel=document.getElementById('applySel'), cardList=document.getElementById('cardList'), selCount=document.getElementById('selCount'); const CHOICES=['1',GROUPED_ID,'28','31','32б']; let tempPicked=[...picked];
       function labelFor(id){ if(id==='1') return 'Медбол'; if(id==='2') return 'Підтягування'; if(id==='14') return 'КСВ'; if(id==='28') return '100 м'; if(id==='31') return '1 км'; if(id==='32б') return 'Функц. витривалість'; if(id===GROUPED_ID) return 'Підтягування / КСВ'; return id; }
-      function buildCards(){ cardList.innerHTML=''; CHOICES.forEach(id=>{ const div=document.createElement('div'); div.className='card' + (tempPicked.includes(id)?' sel':''); div.textContent=labelFor(id); div.addEventListener('click',()=>{ const i=tempPicked.indexOf(id); if(i>=0){ tempPicked.splice(i,1); } else { if(tempPicked.length>=3) return; tempPicked.push(id);} buildCards(); }); cardList.appendChild(div);}); selCount.textContent=`Выбрано: ${tempPicked.length}/3`; applySel.disabled = tempPicked.length!==3; }
+      function buildCards(){ cardList.innerHTML=''; CHOICES.forEach(id=>{ const div=document.createElement('div'); div.className='card'+(tempPicked.includes(id)?' sel':''); div.textContent=labelFor(id); div.addEventListener('click',()=>{ const i=tempPicked.indexOf(id); if(i>=0) tempPicked.splice(i,1); else { if(tempPicked.length>=3) return; tempPicked.push(id);} buildCards(); }); cardList.appendChild(div); }); selCount.textContent=`Выбрано: ${tempPicked.length}/3`; applySel.disabled = tempPicked.length!==3; }
       editBtn.addEventListener('click',()=>{ tempPicked=[...picked]; buildCards(); modalBack.style.display='flex'; });
-      closeModal.addEventListener('click',()=>{ modalBack.style.display='none'; });
+      closeModal.addEventListener('click',()=> modalBack.style.display='none');
       applySel.addEventListener('click',()=>{ if(tempPicked.length!==3) return; picked=[...tempPicked]; renderRows(picked.map(id=>({id,label:labelFor(id),result:'—',points:'—'}))); modalBack.style.display='none'; });
-      function parseMinPerExercise(s){const m=String(s||'').match(/([0-9]+)/);return m?parseInt(m[1],10):0}
+
+      // генерация
+      function onlyNumber(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 }
       function randint(a,b){return Math.floor(a+Math.random()*(b-a+1))}
-      function activeThreshold(){ const list = sex==='M'?DEMO_THRESHOLDS.men:DEMO_THRESHOLDS.women; const catVal = category==='3'? '3, 4':'2'; return list.find(r=>String(r.g)===String(ageGroup)&&String(r.c).trim()===catVal)||null; }
-      function getScale(){return sex==='M'?DEMO_SCALES.men:DEMO_SCALES.women}
-      function generate(){ const th = activeThreshold(); if(!th){ alert('Нет данных порогов для выбранных параметров'); return; } const minPer = parseMinPerExercise(th.min); const s5 = th.s5|0, s4=th.s4|0, s3=th.s3|0; let minSum,nextSum; if(grade===5){minSum=s5;nextSum=null} else if(grade===4){minSum=s4;nextSum=s5} else if(grade===3){minSum=s3;nextSum=s4} else {minSum=3*minPer; nextSum=s3? s3:(minSum+15)} let target; if(!nextSum){ target=minSum; } else { const x=Math.max(1,nextSum-minSum); const r=Math.random(); let lo=minSum, hi=minSum+Math.floor(0.3*x); if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x);} else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x);} if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);} let ids=[...picked]; if(ids.includes(GROUPED_ID)){ if(sex==='J'){ ids = ids.map(id=> id===GROUPED_ID? '14': id);} else { ids = ids.map(id=> id===GROUPED_ID? (Math.random()<0.8? '2':'14'): id);} } const scale=getScale(); for(const id of ids){ if(!scale[id]){ alert('Нет шкалы для '+labelFor(id)); return; } } const allowed=ids.map(id=> Object.keys(scale[id].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a)); const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax); function resFor(id,pts){const m=scale[id].map; return (m[pts]&&m[pts]!=='-'&&m[pts]!=='—')?m[pts]:null} let solution=null; outer: for(let t=0;t<8000;t++){ const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi); if(!c1.length||!c2.length) break; const v1=c1[Math.floor(Math.random()*c1.length)]; const v2=c2[Math.floor(Math.random()*c2.length)]; const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue; const r1=resFor(ids[0],v1), r2=resFor(ids[1],v2), r3=resFor(ids[2],v3); if(!r1||!r2||!r3) continue; solution=[{id:ids[0],label:labelFor(ids[0]),points:v1,result:r1},{id:ids[1],label:labelFor(ids[1]),points:v2,result:r2},{id:ids[2],label:labelFor(ids[2]),points:v3,result:r3},]; break outer;} if(!solution){ alert('Не удалось подобрать баллы под условия. Измени параметры или шкалы.'); return; } renderRows(solution.map(s=>({id:s.id,label:s.label,result:s.result,points:s.points}))); }
+      function activeThreshold(){
+        const list = (sex==='M'? state.thresholds.M : state.thresholds.J);
+        const catVal = (category==='3'? '3,4':'2');
+        let best=null, bestDiff=999;
+        for(const r of list){
+          if((r.category||'').replace(/\s/g,'') !== catVal) continue;
+          const g = parseInt(r.age_group,10), d = Math.abs(g-ageGroup);
+          if(d<bestDiff){ best=r; bestDiff=d; }
+        }
+        return best;
+      }
+      function getScales(){ return sex==='M'? state.scales.M : state.scales.J }
+
+      function generate(){
+        if(!state.ready){ alert('Данные ещё не загружены'); return; }
+        const th = activeThreshold(); if(!th){ alert('Нет данных порогов'); return; }
+        const minPer = onlyNumber(th.min_per_exercise);
+        const s5=onlyNumber(th.sum_for_grade_5), s4=onlyNumber(th.sum_for_grade_4), s3=onlyNumber(th.sum_for_grade_3);
+        let minSum,nextSum;
+        if(grade===5){minSum=s5;nextSum=null}
+        else if(grade===4){minSum=s4;nextSum=s5}
+        else if(grade===3){minSum=s3;nextSum=s4}
+        else {minSum=3*minPer; nextSum=s3? s3:(minSum+15)}
+
+        let target;
+        if(!nextSum){ target=minSum; }
+        else{
+          const x=Math.max(1,nextSum-minSum), r=Math.random();
+          let lo=minSum, hi=minSum+Math.floor(0.3*x);
+          if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
+          else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
+          if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);
+        }
+
+        const scales=getScales();
+        let ids=[...picked];
+        if(ids.includes(GROUPED_ID)){
+          ids = ids.map(id=> id===GROUPED_ID ? (sex==='J' ? '14' : (Math.random()<0.8?'2':'14')) : id);
+        }
+        for(const id of ids){ if(!scales[id]){ alert('Нет шкалы для '+labelFor(id)); return; } }
+
+        const allowed=ids.map(id=> Object.keys(scales[id].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
+        const mean=target/3, devMax=(Math.random()<0.8?0.30:0.40)*mean, lo=Math.max(minPer,Math.floor(mean-devMax)), hi=Math.ceil(mean+devMax);
+        function resFor(id,pts){const m=scales[id].map; return (m[pts]&&m[pts]!=='-'&&m[pts]!=='—')?m[pts]:null}
+
+        let solution=null;
+        outer: for(let t=0;t<8000;t++){
+          const c1=allowed[0].filter(v=>v>=lo&&v<=hi), c2=allowed[1].filter(v=>v>=lo&&v<=hi);
+          if(!c1.length||!c2.length) break;
+          const v1=c1[Math.floor(Math.random()*c1.length)], v2=c2[Math.floor(Math.random()*c2.length)];
+          const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
+          const r1=resFor(ids[0],v1), r2=resFor(ids[1],v2), r3=resFor(ids[2],v3); if(!r1||!r2||!r3) continue;
+          solution=[{id:ids[0],label:labelFor(ids[0]),points:v1,result:r1},{id:ids[1],label:labelFor(ids[1]),points:v2,result:r2},{id:ids[2],label:labelFor(ids[2]),points:v3,result:r3}];
+          break outer;
+        }
+        if(!solution){ alert('Не удалось подобрать баллы под условия. Измени параметры или шкалы.'); return; }
+        renderRows(solution.map(s=>({id:s.id,label:s.label,result:s.result,points:s.points})));
+      }
+
       document.getElementById('genBtn').addEventListener('click',generate);
-      if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(console.error); }); }
+
+      if('serviceWorker' in navigator){
+        window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
+      }
+      loadAll();
     </script>
   </body>
-</html>
+  </html>
