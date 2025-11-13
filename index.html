@@ -27,6 +27,8 @@ legend{font-size:12px;color:var(--muted);padding:0 6px}
 .row + .row{margin-top:10px}
 .age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}
 label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+
+/* Таблиця */
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
 thead{background:#f1f5f9;color:#475569;font-size:14px}
 th,td{padding:10px 12px;border-top:1px solid var(--br)}
@@ -35,13 +37,18 @@ tbody td:nth-child(2), tbody td:nth-child(3),
 tfoot td:nth-child(2), tfoot td:nth-child(3){text-align:center}
 tfoot td{background:#f8fafc;font-weight:600}
 .badge{display:inline-block;min-width:28px;padding:2px 8px;text-align:center;border:1px solid var(--br);border-radius:999px;margin-right:8px;font-weight:700;background:#fff}
+
+/* Кнопки */
 .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800;width:100%}
 .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 @media (max-width:520px){.actions{grid-template-columns:1fr}}
+
 .muted{color:var(--muted)}
 .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
+
+/* Модал */
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
 .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
 .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -131,30 +138,24 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-/* ====== Версия для cache-bust ====== */
-const VER='r14';
+/* ====== Версия (cache-bust CSV) ====== */
+const VER='r15';
 
 /* ====== Константы/состояние ====== */
 const GROUPED='pull_or_ksv';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=['метання медболу', GROUPED, 'функціональна витривалість'];
-
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false };
 
 /* ====== Нормализация имён ====== */
 const norm = s => String(s||'').toLowerCase().trim().replace(/[\s\u00A0]+/g,' ');
 const NAME_MAP = new Map([
   ['метання медболу','метання медболу'],
-  ['підтягування','підтягування на перекладині'],
   ['підтягування на перекладині','підтягування на перекладині'],
   ['комплексна силова вправа','комплексна силова вправа'],
-  ['комплексно силова вправа','комплексна силова вправа'],
   ['біг на 100 м','біг на 100 м'],
-  ['біг 100 м','біг на 100 м'],
   ['біг на 1 км','біг на 1 км'],
-  ['біг 1 км','біг на 1 км'],
   ['функціональна витривалість','функціональна витривалість'],
-  ['функц. витривалість','функціональна витривалість'],
 ]);
 function canonName(s){ const c=NAME_MAP.get(norm(s)); return c||norm(s); }
 function labelOf(cn){
@@ -173,52 +174,53 @@ function pickDelim(first, allowComma=false){
   if(first.includes('\t')) return '\t';
   if(first.includes(';')) return ';';
   if(first.includes('|')) return '|';
-  if(allowComma && first.includes(',')) return ',';
+  if(allowComma && first.includes(',')) return ','; // для thresholds можно
   return '\t';
 }
+async function fetchText(url){ const r=await fetch(url+`?v=${VER}`); if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); }
 
-/* ====== Лоадеры ====== */
-async function fetchText(url){
-  const r=await fetch(url+`?v=${VER}`); if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text();
-}
-
-// ШКАЛЫ: никогда НЕ используем запятую как разделитель (в «Результат» запятые как десятичные)
+/* ====== ШКАЛЫ (scales_*.csv) ====== */
+// Поддерживаем:
+//  A) [ID, Назва, Одиниця, Бал, Результат] (как в примере с "14 ...")
+//  B) [Назва, Одиниця, Бал, Результат] (без ID)
+// Запятая НИКОГДА не выступает разделителем (иначе сломает "12,3").
 async function loadScales(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return {};
   const delim=pickDelim(lines[0], /*allowComma*/ false);
+  const rows=lines.map(line=> line.split(delim).map(c=>c.trim()));
 
-  // распарсим в массив колонок (без привязки к заголовкам — чтобы пережить твой кейс)
-  const rows = lines.map(line => line.split(delim).map(c=>c.trim()));
+  // Определим, есть ли заголовок (ищем слова Назва/Одиниця/Бал/Результат)
+  const headerJoin = rows[0].join(' ').toLowerCase();
+  const hasHeader = /назва|одиниц|бал|результат/.test(headerJoin);
+  const data = hasHeader ? rows.slice(1) : rows;
 
-  // если первая строка — заголовок (содержит «Назва»/«Одиниця»/«Бал»/«Результат»), скипаем её
-  const header = rows[0].join(' ').toLowerCase();
-  const hasHeader = /назва|одиниц|бал|результат/.test(header);
-  const dataRows = hasHeader ? rows.slice(1) : rows;
-
-  // теперь по каждой строке определяем схему:
-  // Вариант A (как у тебя): [ID, Назва, Одиниця, Бал, Результат]
-  // Вариант B:              [Назва, Одиниця, Бал, Результат] (ID нет)
-  const byName = {};
-  for(const cols of dataRows){
+  const byName={};
+  for(const cols of data){
     if(!cols.length) continue;
     let id='', name='', unit='', pts='', res='';
-    if(/^\d+$/.test(cols[0])){ // A: первый столбец — ID
-      [id, name, unit, pts, res] = [cols[0]||'', cols[1]||'', cols[2]||'', cols[3]||'', cols[4]||''];
-    }else{ // B: без ID
+
+    // Схема A: первая колонка цифры (или "32б") и всего колонок >=5 => трактуем как [ID, Name, Unit, Points, Result]
+    const first=cols[0];
+    const isID = /^\d+$/.test(first) || /^\d+\s*б$/i.test(first) || /^\d+\s*[a-zа-я]$/i.test(first);
+    if(isID && cols.length>=5){
+      [id, name, unit, pts, res] = [cols[0], cols[1], cols[2], cols[3], cols[4]];
+    }else{
+      // Схема B: без ID
       [name, unit, pts, res] = [cols[0]||'', cols[1]||'', cols[2]||'', cols[3]||''];
     }
+
     const cn = canonName(name);
-    const p = parseInt((pts||'').replace(/\s/g,''),10);
+    const p = parseInt(String(pts||'').replace(/\s/g,''),10);
     if(!cn || !Number.isFinite(p)) continue;
-    if(!byName[cn]) byName[cn] = { id: id||'—', unit, map:{} };
+    if(!byName[cn]) byName[cn] = { id: (id||'—'), unit, map:{} };
     byName[cn].map[p] = res;
   }
   return byName;
 }
 
-// ПОРОГИ: допускаем любой разделитель (запятые можно)
+/* ====== ПОРОГИ (thresholds_*.csv) ====== */
 async function loadThresholds(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
@@ -226,7 +228,6 @@ async function loadThresholds(url){
   const delim=pickDelim(lines[0], /*allowComma*/ true);
   const headers = lines[0].split(delim).map(h=>h.trim().toLowerCase());
   const idx = name => headers.indexOf(name);
-  // возможные названия
   const iAge = Math.max(idx('вік'), idx('вікова група'), idx('возрастная группа'), idx('age_group'), idx('група'), idx('группа'));
   const iCat = Math.max(idx('категорія'), idx('категория'), idx('category'));
   const iMin = Math.max(idx('пороговий мінімум'), idx('пороговый минимум'), idx('min_per_exercise'));
@@ -236,7 +237,7 @@ async function loadThresholds(url){
 
   return lines.slice(1).map(line=>{
     const c=line.split(delim).map(x=>x.trim());
-    const get = (i)=> (i>=0 && i<c.length)? c[i] : '';
+    const get=(i)=> (i>=0 && i<c.length)? c[i] : '';
     return {
       age_group: get(iAge),
       category: (get(iCat)||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','),
@@ -258,10 +259,8 @@ async function loadAll(){
       loadScales('./data/scales_men.csv'),
       loadScales('./data/scales_women.csv'),
     ]);
-    state.thresholds.M = thM;
-    state.thresholds.J = thW;
-    state.scales.M = scM;
-    state.scales.J = scW;
+    state.thresholds.M = thM; state.thresholds.J = thW;
+    state.scales.M = scM; state.scales.J = scW;
 
     const mKeys = Object.keys(scM); const wKeys = Object.keys(scW);
     dataState.textContent = `OK: М[${mKeys.join(', ')||'—'}] Ж[${wKeys.join(', ')||'—'}]`;
@@ -310,7 +309,7 @@ function renderPicked(){
 }
 renderPicked();
 
-/* ====== Модал выбора ====== */
+/* ====== Модал выбора 3-х вправ ====== */
 const modalBack=document.getElementById('modalBack');
 const editBtn=document.getElementById('editBtn');
 const closeModal=document.getElementById('closeModal');
@@ -408,16 +407,14 @@ function generate(){
   }
 
   const cnames = names.map(canonName);
-  for(const n of cnames){
-    if(!scales[n]){ alert('Немає шкали для '+labelOf(n)); return; }
-  }
+  for(const n of cnames){ if(!scales[n]){ alert('Немає шкали для '+labelOf(n)); return; } }
 
   const allowed = cnames.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
   const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
   const resFor = (n,pts) => { const v=scales[n].map[pts]; return (v && v!=='-' && v!=='—') ? v : null; };
 
   let solution=null;
-  outer: for(let t=0;t<12000;t++){
+  outer: for(let t=0;t<15000;t++){
     const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi);
     if(!c1.length||!c2.length) break;
     const v1=c1[Math.floor(Math.random()*c1.length)];
@@ -442,7 +439,7 @@ document.getElementById('editBtn').addEventListener('click',()=>{}); // логи
 
 // init
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
+window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
 }
 loadAll();
 </script>
