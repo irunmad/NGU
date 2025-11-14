@@ -55,7 +55,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки</div>
+    <div class="chip">Генератор оцінки · r22</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -127,7 +127,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r21';
+const VER='r22';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -268,7 +268,7 @@ async function loadAll(){
 }
 
 /* UI */
-const ageGrid=document.getElementById('ageGrid');
+const ageGrid = document.getElementById('ageGrid');
 for(let g=1;g<=7;g++){
   const lab=document.createElement('label'); lab.className='inline';
   const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
@@ -507,14 +507,6 @@ function generate(){
 
 /* События */
 document.getElementById('genBtn').addEventListener('click',generate);
-
-const ageGrid=document.getElementById('ageGrid');
-for(let g=1;g<=7;g++){
-  const lab=document.createElement('label'); lab.className='inline';
-  const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);});
-  lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
-}
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
