@@ -66,7 +66,7 @@ tfoot td{background:#f8fafc;font-weight:600}
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
-  <!-- Категорія + Стать в один ряд -->
+  <!-- Категорія + Стать -->
   <div class="row">
     <fieldset class="tight">
       <legend>Категорія</legend>
@@ -84,7 +84,7 @@ tfoot td{background:#f8fafc;font-weight:600}
     </fieldset>
   </div>
 
-  <!-- Групи + Оцінка -->
+  <!-- Група + Оцінка -->
   <div class="row" style="flex-direction:column">
     <fieldset>
       <legend>Вікова група (1–7)</legend>
@@ -139,33 +139,46 @@ tfoot td{background:#f8fafc;font-weight:600}
 
 <script>
 /* ====== Версия (cache-bust CSV) ====== */
-const VER='r18';
+const VER='r20';
 
 /* ====== Состояние ====== */
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
-let picked=[GROUPED]; // после загрузки CSV подставим дефолты
+let picked=[GROUPED];
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 /* ====== Утилиты ====== */
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const onlyNumber = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
-function pickDelim(first, allowComma=false){
+const stripQuotes = s => String(s??'').replace(/^\s*[\"'«»]+|[\"'«»]+\s*$/g,'').trim();
+function pickDelim(first){
   if(first.includes('\t')) return '\t';
   if(first.includes(';')) return ';';
   if(first.includes('|')) return '|';
-  if(allowComma && first.includes(',')) return ',';
+  if(first.includes(',')) return ',';
   return '\t';
+}
+function parseCSVLine(line, delim){
+  const out=[]; let cur=''; let q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='\"'){ if(q && line[i+1]==='\"'){ cur+='\"'; i++; } else { q=!q; } }
+    else if(ch===delim && !q){ out.push(cur); cur=''; }
+    else{ cur+=ch; }
+  }
+  out.push(cur);
+  return out.map(c=>stripQuotes(c));
 }
 async function fetchText(url){ const r=await fetch(url+`?v=${VER}`); if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); }
 
-/* ====== ШКАЛЫ: строго по названиям из CSV ====== */
+/* ====== ШКАЛЫ ====== */
 async function loadScales(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return {};
-  const delim=pickDelim(lines[0], true); // <-- разрешаем запятую
-  const rows=lines.map(line=> line.split(delim).map(c=>c.trim()));
+  const delim=pickDelim(lines[0]);
+  const rows=lines.map(line=>parseCSVLine(line,delim));
   const headerJoin = rows[0].join(' ').toLowerCase();
   const hasHeader = /назва|одиниц|бал|результат/.test(headerJoin);
   const data = hasHeader ? rows.slice(1) : rows;
@@ -174,17 +187,17 @@ async function loadScales(url){
     if(!cols.length) continue;
     let id='', name='', unit='', pts='', res='';
     const first=cols[0];
-    const looksLikeID = /^\d+$/.test(first) || /^\d+\s*[a-zа-я]$/i.test(first); // допускаем 32б
+    const looksLikeID = /^\d+(\s*[a-zа-я])?$/i.test(first); // допускаем 32б
     if(looksLikeID && cols.length>=5){
-      [id, name, unit, pts, res] = [cols[0], cols[1], cols[2], cols[3], cols[4]];
+      [id,name,unit,pts,res]=[cols[0],cols[1],cols[2],cols[3],cols[4]];
     }else{
-      [name, unit, pts, res] = [cols[0]||'', cols[1]||'', cols[2]||'', cols[3]||''];
+      [name,unit,pts,res]=[cols[0]||'',cols[1]||'',cols[2]||'',cols[3]||''];
     }
     if(!name) continue;
     const points = parseInt(String(pts||'').replace(/\s/g,''),10);
     if(!Number.isFinite(points)) continue;
     if(!byName[name]) byName[name] = { id: (id||'—'), unit, map:{} };
-    byName[name].map[points] = res;
+    byName[name].map[points] = stripQuotes(res); // не трогаем формат результата
   }
   return byName;
 }
@@ -194,28 +207,26 @@ async function loadThresholds(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return [];
-  const delim=pickDelim(lines[0], true);
-  const headers = lines[0].split(delim).map(h=>h.trim().toLowerCase());
-
+  const delim=pickDelim(lines[0]);
+  const rows=lines.map(line=>parseCSVLine(line,delim));
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
   const idx = name => headers.indexOf(name);
+
   const iAge = Math.max(idx('вік'), idx('вікова група'), idx('возрастная группа'), idx('age_group'), idx('група'), idx('группа'));
   const iCat = Math.max(idx('категорія'), idx('категория'), idx('category'));
   const iMin = Math.max(idx('пороговий мінімум'), idx('пороговый минимум'), idx('min_per_exercise'));
-
-  // Гибкий поиск колонок "з 3 вправ — «5/4/3»"
   const findSumCol = (digit) => {
-    let i = headers.findIndex(h => /з\s*3\s*вправ/i.test(h) && new RegExp(`[«"]?${digit}[»"]?`).test(h));
-    if (i<0) i = headers.findIndex(h => /із\s*тр(ь|и)ох\s*вправ/i.test(h) && new RegExp(`${digit}`).test(h));
+    let i = headers.findIndex(h => /з\s*3\s*вправ|із\s*тр(ь|и)ох\s*вправ/.test(h) && new RegExp(`[«"]?${digit}[»"]?`).test(h));
     if (i<0) i = headers.findIndex(h => /sum_for_grade_\d+/.test(h) && h.endsWith(String(digit)));
+    if (i<0) i = headers.findIndex(h => new RegExp(`\\b${digit}\\b`).test(h) && /з\s*3|із\s*тр/.test(h));
     return i;
   };
   const iS5 = findSumCol(5);
   const iS4 = findSumCol(4);
   const iS3 = findSumCol(3);
 
-  return lines.slice(1).map(line=>{
-    const c=line.split(delim).map(x=>x.trim());
-    const get=(i)=> (i>=0 && i<c.length)? c[i] : '';
+  return rows.slice(1).map(c=>{
+    const get=(i)=> (i>=0 && i<c.length)? stripQuotes(c[i]) : '';
     return {
       age_group: get(iAge),
       category: (get(iCat)||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','),
@@ -227,7 +238,7 @@ async function loadThresholds(url){
   });
 }
 
-/* ====== Формирование списка упражнений из CSV ====== */
+/* ====== Список из CSV ====== */
 function namesFrom(scales){ return Object.keys(scales||{}); }
 function findBy(names, re){ re = (re instanceof RegExp)? re : new RegExp(re,'i'); return names.find(n=>re.test(n)); }
 function computeChoices(){
@@ -313,11 +324,12 @@ const selCount=document.getElementById('selCount');
 function buildCards(){
   cardList.innerHTML='';
   let temp=[...picked];
-  const names = state.choices || [];
+  const all = state.choices || [];
+  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || /комплексн.*силов/i.test(n))); // убрали дубли Підтяг/КСВ
 
-  // Пункт "Підтягування / КСВ"
-  const hasPull = names.some(n=>/підтяг|подтяг/i.test(n));
-  const hasKsv  = names.some(n=>/комплексн.*силов/i.test(n));
+  // Спец-пункт «Підтягування / КСВ»
+  const hasPull = all.some(n=>/підтяг|подтяг/i.test(n));
+  const hasKsv  = all.some(n=>/комплексн.*силов/i.test(n));
   if(hasPull||hasKsv){
     const div=document.createElement('div');
     div.className='card'+(temp.includes(GROUPED)?' sel':'');
@@ -330,7 +342,7 @@ function buildCards(){
     cardList.appendChild(div);
   }
 
-  // Все названия из CSV
+  // Все прочие из CSV
   names.forEach(name=>{
     const div=document.createElement('div');
     div.className='card'+(temp.includes(name)?' sel':'');
@@ -350,7 +362,75 @@ editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='fle
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
-/* ====== Генерация ====== */
+/* ====== Вариация результата в пределах градации ====== */
+function decimalsCount(s){
+  const m=String(s).match(/,(\d+)/); return m? m[1].length : 0;
+}
+function formatDecComma(x, decs){ return x.toFixed(decs).replace('.',','); }
+function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
+function toMinSec_csv(total){ total=Math.max(0,total|0); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
+function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
+function isReps(unit){ return /раз|рази/i.test(unit); }
+function isMeters(unit){ return /\bм\b/i.test(unit); }
+function isMedball(name){ return /медбол/i.test(name); }
+function isEndurance(name){ return /витривал/i.test(name); }
+
+function variedResult(name, unit, pts, map){
+  const base = stripQuotes(map[pts]);
+  if(!base) return null;
+  const next = map[pts+1]; // "лучший" сосед
+  if(!next) return base;
+  const betterIsLower = isLowerBetter(name, unit);
+
+  // 1 км — "хв, с"
+  if(/км/i.test(name) || /хв/i.test(unit)){
+    const a=parseMinSec_csv(base).total, b=parseMinSec_csv(stripQuotes(next)).total;
+    const lo = betterIsLower ? b+0 : a;
+    const hi = betterIsLower ? a   : b-1;
+    if(hi<lo) return base;
+    return toMinSec_csv(randint(lo,hi));
+  }
+
+  // 100 м, медбол — десятичные с запятой
+  if(isMedball(name) || /100\s*м/i.test(name)){
+    const d = Math.max(decimalsCount(base), decimalsCount(stripQuotes(next)), isMedball(name)?2:1);
+    const a = parseFloat(String(base).replace(',','.'));
+    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    let from, to;
+    if(betterIsLower){ from=b; to=a; if(to<=from) return base; }
+    else{ from=a; to=b; if(to<=from) return base; }
+    const step=0.1;
+    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=randint(kFrom,kTo);
+    return formatDecComma(k*step, d);
+  }
+
+  // Витривалість (метри) — целые
+  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !/100\s*м/i.test(name))){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo = isLowerBetter(name,unit) ? (b+1) : a;
+    const hi = isLowerBetter(name,unit) ? a : (b-1);
+    if(hi<lo) return base;
+    return String(randint(lo,hi));
+  }
+
+  // Повторы — целые
+  if(isReps(unit)){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo = isLowerBetter(name,unit) ? (b+1) : a;
+    const hi = isLowerBetter(name,unit) ? a : (b-1);
+    if(hi<lo) return base;
+    return String(randint(lo,hi));
+  }
+
+  return base;
+}
+
+/* ====== Пороговые строки ====== */
 function activeThreshold(){
   const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
   if(!list || !list.length) return null;
@@ -373,52 +453,75 @@ function activeThreshold(){
   return best;
 }
 
+/* ====== 80/15/5 распределение для суммы ====== */
+function sampleSkewed(minSum, nextSum){
+  // x — ширина окна
+  const x=Math.max(1,nextSum-minSum);
+  const r=Math.random();
+  let lo=minSum, hi=minSum+Math.floor(0.3*x);
+  if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
+  else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
+  if(hi>=nextSum) hi=nextSum-1;
+  if(hi<lo) hi=lo;
+  return randint(lo,hi);
+}
+
+/* ====== Підтягування/КСВ: 80/20 без привязки к полу ====== */
 function choosePullOrKsv(scales){
   const names = Object.keys(scales);
   const pull = names.find(n=>/підтяг|подтяг/i.test(n));
   const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
-  if(sex==='J'){ return ksv || pull || null; }
-  if(Math.random()<0.8){ return pull || ksv || null; } // 80/20
-  return ksv || pull || null;
+  if(!pull && !ksv) return null;
+  return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
 }
 
-function generate(){
-  if(!state.ready){ alert('Дані ще не завантажені'); return; }
+/* ====== Генерация ====== */
+function generateOnce(){
   const th=activeThreshold()||{min_per_exercise:'10',sum_for_grade_3:'60',sum_for_grade_4:'80',sum_for_grade_5:'95'};
   const minPer=onlyNumber(th.min_per_exercise);
   const s5=onlyNumber(th.sum_for_grade_5), s4=onlyNumber(th.sum_for_grade_4), s3=onlyNumber(th.sum_for_grade_3);
-  let minSum,nextSum;
-  if(grade===5){minSum=s5;nextSum=null}
-  else if(grade===4){minSum=s4;nextSum=s5}
-  else if(grade===3){minSum=s3;nextSum=s4}
-  else {minSum=3*minPer; nextSum=s3? s3:(minSum+15)}
 
-  let target;
-  if(!nextSum){ target=minSum; }
-  else{
-    const x=Math.max(1,nextSum-minSum); const r=Math.random();
-    let lo=minSum, hi=minSum+Math.floor(0.3*x);
-    if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
-    else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
-    if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);
+  let minSum,nextSum,target;
+  if(grade===5){
+    const step = (s5&&s4)? Math.max(1, s5-s4) : 10;
+    minSum=s5; nextSum=s5+step;
+    target = sampleSkewed(minSum,nextSum);
+  }else if(grade===4){
+    minSum=s4; nextSum=s5;
+    target = sampleSkewed(minSum,nextSum);
+  }else if(grade===3){
+    minSum=s3; nextSum=s4;
+    target = sampleSkewed(minSum,nextSum);
+  }else{ // grade 2 — строго ниже порога «3»
+    minSum=Math.max(3*minPer,0); nextSum=s3|| (minSum+15);
+    // Тоже с перекосом к нижней границе (ниже тройки)
+    const x=Math.max(1,nextSum-minSum);
+    const r=Math.random();
+    let lo=minSum, hi=nextSum-1;
+    let a=lo+Math.floor(0.3*x), b=lo+Math.floor(0.5*x), c=lo+Math.floor(0.7*x);
+    if(r<0.8){ hi=Math.min(a,nextSum-1); }
+    else if(r<0.95){ lo=a; hi=Math.min(b,nextSum-1); }
+    else{ lo=b; hi=Math.min(c,nextSum-1); }
+    if(hi<lo) hi=lo;
+    target=randint(lo,hi);
   }
 
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
-
-  // Разворачиваем GROUPED в конкретное имя из CSV
   let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
-  if(names.includes(null)){ alert('Немає шкали для Підтягування/КСВ у CSV'); return; }
+  if(names.includes(null)) return null;
 
-  // Проверяем существование
-  for(const n of names){ if(!scales[n]){ alert('Немає шкали для '+n); return; } }
+  for(const n of names){ if(!scales[n]) return null; }
 
-  // Разрешённые балы (>= minPer)
   const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
-  const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
-  const resFor = (n,pts) => { const v=scales[n].map[pts]; return (v && v!=='-' && v!=='—') ? v : null; };
+  const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean;
+  const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
+  const resFor = (n,pts) => {
+    const s=scales[n]; if(!s) return null;
+    const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
+    return variedResult(n, s.unit, pts, s.map);
+  };
 
-  let solution=null;
-  outer: for(let t=0;t<15000;t++){
+  for(let tries=0; tries<15000; tries++){
     const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi);
     if(!c1.length||!c2.length) break;
     const v1=c1[Math.floor(Math.random()*c1.length)];
@@ -426,25 +529,31 @@ function generate(){
     const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
     const r1=resFor(names[0],v1), r2=resFor(names[1],v2), r3=resFor(names[2],v3);
     if(!r1||!r2||!r3) continue;
-    solution=[
+    return [
       {name:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
       {name:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
-      {name:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
+      {name:names[2], points=v3, result:r3, badge:(scales[names[2]].id||'—')},
     ];
-    break outer;
   }
-  if(!solution){ alert('Не вдалося підібрати бали під умови. Перевір шкали/пороги.'); return; }
-  renderRows(solution);
+  return null;
+}
+
+function generate(){
+  if(!state.ready){ return; }
+  let solution=null;
+  for(let attempt=0; attempt<100 && !solution; attempt++){
+    solution = generateOnce();
+  }
+  if(solution){ renderRows(solution); }
 }
 
 /* ====== События ====== */
 document.getElementById('genBtn').addEventListener('click',generate);
 
-// init
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
 }
 loadAll();
 </script>
-</body>         
+</body>
 </html>
