@@ -31,7 +31,8 @@ thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(4),
 tbody td:nth-child(3), tbody td:nth-child(4),
 tfoot td:nth-child(2), tfoot td:nth-child(3){text-align:center}
 tfoot td{background:#f8fafc;font-weight:600}
-.idcell{width:54px;text-align:center;color:#0f172a;font-weight:700}
+.idcell{width:54px;text-align:center}
+.idpill{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:999px;background:#0f172a;color:#fff;font-weight:800;margin:auto}
 .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800;width:100%}
 .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -54,7 +55,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r26</div>
+    <div class="chip">Генератор оцінки · r27</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -95,9 +96,9 @@ tfoot td{background:#f8fafc;font-weight:600}
     <table>
       <thead><tr><th style="width:54px">№</th><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
       <tbody id="tbody">
-        <tr><td class="idcell">—</td><td>Метання медболу</td><td>—</td><td>—</td></tr>
-        <tr><td class="idcell">2/14</td><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
-        <tr><td class="idcell">—</td><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
+        <tr><td class="idcell"><span class="idpill">—</span></td><td>Метання медболу</td><td>—</td><td>—</td></tr>
+        <tr><td class="idcell"><span class="idpill">2/14</span></td><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
+        <tr><td class="idcell"><span class="idpill">—</span></td><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
       </tbody>
       <tfoot><tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
     </table>
@@ -136,7 +137,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r26';
+const VER='r27';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -148,14 +149,14 @@ const onlyNumber = s => { const m=String(s||'').match(/(\d+)/); return m?parseIn
 const stripQuotes = s => String(s??'').replace(/^\s*[\"'«»]+|[\"'«»]+\s*$/g,'').trim();
 function pickDelim(first){
   if(first.includes('\t')) return '\t'; /* literal backslash+t case */
-  if(first.includes('	')) return '	';
+  if(first.includes('\u0009')) return '\t';
   if(first.includes(';')) return ';';
   if(first.includes('|')) return '|';
   if(first.includes(',')) return ',';
-  return '	';
+  return '\t';
 }
 function parseCSVLine(line, delim){
-  if(delim==='\t') delim = '	';
+  if(delim==='\t') delim = '\t'.replace('\\t','\t'); // ensure real TAB char
   const out=[]; let cur=''; let q=false;
   for(let i=0;i<line.length;i++){
     const ch=line[i];
@@ -217,7 +218,7 @@ async function loadThresholds(url){
   const iCat = Math.max(idx('категорія'), idx('категория'), idx('category'));
   const iMin = Math.max(idx('пороговий мінімум'), idx('пороговый минимум'), idx('min_per_exercise'));
   const findSumCol = (digit) => {
-    let i = headers.findIndex(h => /з\s*3\s*вправ|із\s*тр(ь|и)ох\s*вправ/.test(h) && new RegExp(`[«"]?${digit}[»"]?`).test(h));
+    let i = headers.findIndex(h => /з\s*3\s*вправ|із\s*тр(ь|и)ох\s*вправ/.test(h) && new RegExp(`[«\(\s"]?${digit}[»\)\s"]?`).test(h));
     if (i<0) i = headers.findIndex(h => /sum_for_grade_\d+/.test(h) && h.endsWith(String(digit)));
     if (i<0) i = headers.findIndex(h => new RegExp(`\b${digit}\b`).test(h) && /з\s*3|із\s*тр/.test(h));
     return i;
@@ -306,7 +307,7 @@ function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell">${r.badge||'—'}</td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
@@ -469,7 +470,7 @@ function activeThreshold(){
   return best;
 }
 
-/* Розподілення */
+/* Вероятности по оценкам */
 function sampleSkewed(minSum, nextSum){
   const x=Math.max(1,nextSum-minSum);
   const r=Math.random();
