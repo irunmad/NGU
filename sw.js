@@ -1,5 +1,5 @@
-// Simple SW for NGU r24
-const CACHE = 'ngu-r24';
+// Simple SW for NGU r29
+const CACHE = 'ngu-r29';
 const ASSETS = ['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
