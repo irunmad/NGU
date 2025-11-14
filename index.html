@@ -66,7 +66,7 @@ tfoot td{background:#f8fafc;font-weight:600}
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
-  <!-- Категорія + Стать -->
+  <!-- Категорія + Стать в один ряд -->
   <div class="row">
     <fieldset class="tight">
       <legend>Категорія</legend>
@@ -84,7 +84,7 @@ tfoot td{background:#f8fafc;font-weight:600}
     </fieldset>
   </div>
 
-  <!-- Група + Оцінка -->
+  <!-- Групи + Оцінка -->
   <div class="row" style="flex-direction:column">
     <fieldset>
       <legend>Вікова група (1–7)</legend>
@@ -139,12 +139,12 @@ tfoot td{background:#f8fafc;font-weight:600}
 
 <script>
 /* ====== Версия (cache-bust CSV) ====== */
-const VER='r17';
+const VER='r18';
 
 /* ====== Состояние ====== */
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
-let picked=[GROUPED]; // після завантаження CSV підставимо дефолти
+let picked=[GROUPED]; // после загрузки CSV подставим дефолты
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 /* ====== Утилиты ====== */
@@ -164,7 +164,7 @@ async function loadScales(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return {};
-  const delim=pickDelim(lines[0], false); // запятая мешает десятичным результатам
+  const delim=pickDelim(lines[0], true); // <-- разрешаем запятую
   const rows=lines.map(line=> line.split(delim).map(c=>c.trim()));
   const headerJoin = rows[0].join(' ').toLowerCase();
   const hasHeader = /назва|одиниц|бал|результат/.test(headerJoin);
@@ -196,13 +196,22 @@ async function loadThresholds(url){
   if(!lines.length) return [];
   const delim=pickDelim(lines[0], true);
   const headers = lines[0].split(delim).map(h=>h.trim().toLowerCase());
+
   const idx = name => headers.indexOf(name);
   const iAge = Math.max(idx('вік'), idx('вікова група'), idx('возрастная группа'), idx('age_group'), idx('група'), idx('группа'));
   const iCat = Math.max(idx('категорія'), idx('категория'), idx('category'));
   const iMin = Math.max(idx('пороговий мінімум'), idx('пороговый минимум'), idx('min_per_exercise'));
-  const iS3  = Math.max(idx('із трьох вправ'), idx('з трьох вправ'), idx('из трёх упражнений'), idx('из трех упражнений'), idx('sum_for_grade_3'));
-  const iS4  = Math.max(idx('із трьох вправ_4'), idx('з трьох вправ_4'), idx('sum_for_grade_4'));
-  const iS5  = Math.max(idx('із трьох вправ_5'), idx('з трьох вправ_5'), idx('sum_for_grade_5'));
+
+  // Гибкий поиск колонок "з 3 вправ — «5/4/3»"
+  const findSumCol = (digit) => {
+    let i = headers.findIndex(h => /з\s*3\s*вправ/i.test(h) && new RegExp(`[«"]?${digit}[»"]?`).test(h));
+    if (i<0) i = headers.findIndex(h => /із\s*тр(ь|и)ох\s*вправ/i.test(h) && new RegExp(`${digit}`).test(h));
+    if (i<0) i = headers.findIndex(h => /sum_for_grade_\d+/.test(h) && h.endsWith(String(digit)));
+    return i;
+  };
+  const iS5 = findSumCol(5);
+  const iS4 = findSumCol(4);
+  const iS3 = findSumCol(3);
 
   return lines.slice(1).map(line=>{
     const c=line.split(delim).map(x=>x.trim());
@@ -218,14 +227,13 @@ async function loadThresholds(url){
   });
 }
 
-/* ====== Имена из CSV ====== */
+/* ====== Формирование списка упражнений из CSV ====== */
 function namesFrom(scales){ return Object.keys(scales||{}); }
 function findBy(names, re){ re = (re instanceof RegExp)? re : new RegExp(re,'i'); return names.find(n=>re.test(n)); }
 function computeChoices(){
   const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
   const names = namesFrom(scales);
-  state.choices = names; // все имена из CSV
-  // дефолт: медбол, GROUPED, функц (или первые попавшиеся)
+  state.choices = names;
   const med   = findBy(names, /медбол/i);
   const func  = findBy(names, /функц|витривал/i);
   const first = names[0] || '—';
@@ -307,7 +315,7 @@ function buildCards(){
   let temp=[...picked];
   const names = state.choices || [];
 
-  // «Підтягування / КСВ» — как единый пункт
+  // Пункт "Підтягування / КСВ"
   const hasPull = names.some(n=>/підтяг|подтяг/i.test(n));
   const hasKsv  = names.some(n=>/комплексн.*силов/i.test(n));
   if(hasPull||hasKsv){
@@ -370,8 +378,7 @@ function choosePullOrKsv(scales){
   const pull = names.find(n=>/підтяг|подтяг/i.test(n));
   const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
   if(sex==='J'){ return ksv || pull || null; }
-  // М: 80% подтягивания, 20% КСВ
-  if(Math.random()<0.8){ return pull || ksv || null; }
+  if(Math.random()<0.8){ return pull || ksv || null; } // 80/20
   return ksv || pull || null;
 }
 
@@ -398,14 +405,14 @@ function generate(){
 
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
 
-  // Разворачиваем GROUPED
+  // Разворачиваем GROUPED в конкретное имя из CSV
   let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
   if(names.includes(null)){ alert('Немає шкали для Підтягування/КСВ у CSV'); return; }
 
   // Проверяем существование
   for(const n of names){ if(!scales[n]){ alert('Немає шкали для '+n); return; } }
 
-  // Разрешённые баллы (>= minPer)
+  // Разрешённые балы (>= minPer)
   const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
   const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
   const resFor = (n,pts) => { const v=scales[n].map[pts]; return (v && v!=='-' && v!=='—') ? v : null; };
@@ -439,5 +446,5 @@ if('serviceWorker' in navigator){
 }
 loadAll();
 </script>
-</body>
+</body>         
 </html>
