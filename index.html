@@ -30,11 +30,11 @@ label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
 thead{background:#f1f5f9;color:#475569;font-size:14px}
 th,td{padding:10px 12px;border-top:1px solid var(--br)}
-thead th:nth-child(2), thead th:nth-child(3),
-tbody td:nth-child(2), tbody td:nth-child(3),
+thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(4),
+tbody td:nth-child(3), tbody td:nth-child(4),
 tfoot td:nth-child(2), tfoot td:nth-child(3){text-align:center}
 tfoot td{background:#f8fafc;font-weight:600}
-.badge{display:inline-block;min-width:28px;padding:2px 8px;text-align:center;border:1px solid var(--br);border-radius:999px;margin-right:8px;font-weight:700;background:#fff}
+.idcell{width:54px;text-align:center;color:#0f172a;font-weight:700}
 .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800;width:100%}
 .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -55,7 +55,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r22</div>
+    <div class="chip">Генератор оцінки · r24</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -94,13 +94,13 @@ tfoot td{background:#f8fafc;font-weight:600}
 
   <div style="margin-top:12px">
     <table>
-      <thead><tr><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
+      <thead><tr><th style="width:54px">№</th><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
       <tbody id="tbody">
-        <tr><td><span class="badge">—</span>Метання медболу</td><td>—</td><td>—</td></tr>
-        <tr><td><span class="badge">2/14</span>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
-        <tr><td><span class="badge">—</span>Функц. витривалість</td><td>—</td><td>—</td></tr>
+        <tr><td class="idcell">—</td><td>Метання медболу</td><td>—</td><td>—</td></tr>
+        <tr><td class="idcell">2/14</td><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
+        <tr><td class="idcell">—</td><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
       </tbody>
-      <tfoot><tr><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
+      <tfoot><tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
     </table>
 
     <div class="actions">
@@ -127,7 +127,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r22';
+const VER='r24';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -135,20 +135,20 @@ const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choic
 
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-const onlyNumber = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
-const stripQuotes = s => String(s??'').replace(/^\s*[\"'«»]+|[\"'«»]+\s*$/g,'').trim();
+const onlyNumber = s => { const m=String(s||'').match(/(\\d+)/); return m?parseInt(m[1],10):0 };
+const stripQuotes = s => String(s??'').replace(/^\\s*[\\"'«»]+|[\\"'«»]+\\s*$/g,'').trim();
 function pickDelim(first){
-  if(first.includes('\t')) return '\t';
+  if(first.includes('\\t')) return '\\t';
   if(first.includes(';')) return ';';
   if(first.includes('|')) return '|';
   if(first.includes(',')) return ',';
-  return '\t';
+  return '\\t';
 }
 function parseCSVLine(line, delim){
   const out=[]; let cur=''; let q=false;
   for(let i=0;i<line.length;i++){
     const ch=line[i];
-    if(ch==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else { q=!q; } }
+    if(ch==='\"'){ if(q && line[i+1]==='\"'){ cur+='\"'; i++; } else { q=!q; } }
     else if(ch===delim && !q){ out.push(cur); cur=''; }
     else{ cur+=ch; }
   }
@@ -164,8 +164,8 @@ async function fetchText(url){
 
 /* ШКАЛЫ */
 async function loadScales(url){
-  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
-  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  const txt=(await fetchText(url)).replace(/^\\uFEFF/,'');
+  const lines=txt.split(/\\r?\\n/).filter(x=>x.trim().length);
   if(!lines.length) return {};
   const delim=pickDelim(lines[0]);
   const rows=lines.map(line=>parseCSVLine(line,delim));
@@ -177,14 +177,14 @@ async function loadScales(url){
     if(!cols.length) continue;
     let id='', name='', unit='', pts='', res='';
     const first=cols[0];
-    const looksLikeID = /^\d+(\s*[a-zа-я])?$/i.test(first);
+    const looksLikeID = /^\\d+(\\s*[a-zа-я])?$/i.test(first);
     if(looksLikeID && cols.length>=5){
       [id,name,unit,pts,res]=[cols[0],cols[1],cols[2],cols[3],cols[4]];
     }else{
       [name,unit,pts,res]=[cols[0]||'',cols[1]||'',cols[2]||'',cols[3]||''];
     }
     if(!name) continue;
-    const points = parseInt(String(pts||'').replace(/\s/g,''),10);
+    const points = parseInt(String(pts||'').replace(/\\s/g,''),10);
     if(!Number.isFinite(points)) continue;
     if(!byName[name]) byName[name] = { id: (id||'—'), unit, map:{} };
     byName[name].map[points] = stripQuotes(res);
@@ -194,10 +194,10 @@ async function loadScales(url){
 
 /* ПОРОГИ */
 async function loadThresholds(url){
-  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
-  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  const txt=(await fetchText(url)).replace(/^\\uFEFF/,'');
+  const lines=txt.split(/\\r?\\n/).filter(x=>x.trim().length);
+  const delim=pickDelim(lines[0]||'');
   if(!lines.length) return [];
-  const delim=pickDelim(lines[0]);
   const rows=lines.map(line=>parseCSVLine(line,delim));
   const headers = rows[0].map(h=>h.trim().toLowerCase());
   const idx = name => headers.indexOf(name);
@@ -205,19 +205,19 @@ async function loadThresholds(url){
   const iCat = Math.max(idx('категорія'), idx('категория'), idx('category'));
   const iMin = Math.max(idx('пороговий мінімум'), idx('пороговый минимум'), idx('min_per_exercise'));
   const findSumCol = (digit) => {
-    let i = headers.findIndex(h => /з\s*3\s*вправ|із\s*тр(ь|и)ох\s*вправ/.test(h) && new RegExp(`[«"]?${digit}[»"]?`).test(h));
-    if (i<0) i = headers.findIndex(h => /sum_for_grade_\d+/.test(h) && h.endsWith(String(digit)));
-    if (i<0) i = headers.findIndex(h => new RegExp(`\\b${digit}\\b`).test(h) && /з\s*3|із\s*тр/.test(h));
+    let i = headers.findIndex(h => /з\\s*3\\s*вправ|із\\s*тр(ь|и)ох\\s*вправ/.test(h) && new RegExp(`[«"]?${digit}[»"]?`).test(h));
+    if (i<0) i = headers.findIndex(h => /sum_for_grade_\\d+/.test(h) && h.endsWith(String(digit)));
+    if (i<0) i = headers.findIndex(h => new RegExp(`\\b${digit}\\b`).test(h) && /з\\s*3|із\\s*тр/.test(h));
     return i;
   };
-  const iS5 = findSumCol(5);
-  const iS4 = findSumCol(4);
   const iS3 = findSumCol(3);
+  const iS4 = findSumCol(4);
+  const iS5 = findSumCol(5);
   return rows.slice(1).map(c=>{
     const get=(i)=> (i>=0 && i<c.length)? stripQuotes(c[i]) : '';
     return {
       age_group: get(iAge),
-      category: (get(iCat)||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','),
+      category: (get(iCat)||'').replace(/[\\s\\u00A0]/g,'').replace(/[,;]+/g,','),
       min_per_exercise: get(iMin),
       sum_for_grade_3: get(iS3),
       sum_for_grade_4: get(iS4),
@@ -235,9 +235,11 @@ function computeChoices(){
   state.choices = names;
   const med   = findBy(names, /медбол/i);
   const func  = findBy(names, /функц|витривал/i);
-  const first = names[0] || '—';
-  const second= names.find(n=>n!==first) || first;
-  picked = [ med || first, GROUPED, func || second ].filter(Boolean).slice(0,3);
+  const pull  = findBy(names, /підтяг|подтяг/i);
+  const ksv   = findBy(names, /комплексн.*силов/i);
+  const first = med || names[0] || '—';
+  const second= func || names.find(n=>n!==first) || first;
+  picked = [ first, (pull||ksv)? GROUPED : (pull||ksv), second ].filter(Boolean).slice(0,3);
 }
 
 /* Загрузка всего */
@@ -284,7 +286,7 @@ function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><span class="badge">${r.badge||'—'}</span>${r.name===GROUPED? 'Підтягування / КСВ' : r.name}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td class="idcell">${r.badge||'—'}</td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
@@ -293,10 +295,10 @@ function renderRows(rows){
 function renderPicked(){
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
   const rows = picked.map(n=>{
-    if(n===GROUPED) return {name:GROUPED,result:'—',points:'—',badge:'2/14'};
+    if(n===GROUPED) return {name:GROUPED, displayName:'Підтягування / КСВ', result:'—',points:'—',badge:'2/14'};
     const info = scales[n];
     const badge = info? String(info.id||'—') : '—';
-    return {name:n,result:'—',points:'—',badge};
+    return {name:n, displayName:n, result:'—',points:'—',badge};
   });
   renderRows(rows);
 }
@@ -348,7 +350,7 @@ editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='fle
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
-/* Вариация результата в пределах градации */
+/* Helpers */
 function decimalsCount(s){ const m=String(s).match(/,(\d+)/); return m? m[1].length : 0; }
 function formatDecComma(x, decs){ return x.toFixed(decs).replace('.',','); }
 function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
@@ -358,7 +360,9 @@ function isReps(unit){ return /раз|рази/i.test(unit); }
 function isMeters(unit){ return /\bм\b/i.test(unit); }
 function isMedball(name){ return /медбол/i.test(name); }
 function isEndurance(name){ return /витривал/i.test(name); }
+function isHundred(name){ return /100\s*м/i.test(name); }
 
+/* Вариация результата в пределах градации (между баллом pts и следующим) */
 function variedResult(name, unit, pts, map){
   const base = stripQuotes(map[pts]);
   if(!base) return null;
@@ -366,40 +370,61 @@ function variedResult(name, unit, pts, map){
   if(!next) return base;
   const betterIsLower = isLowerBetter(name, unit);
 
+  // 1 км: работаем в секундах
   if(/км/i.test(name) || /хв/i.test(unit)){
     const a=parseMinSec_csv(base).total, b=parseMinSec_csv(stripQuotes(next)).total;
-    const lo = betterIsLower ? b+0 : a;
-    const hi = betterIsLower ? a   : b-1;
-    if(hi<lo) return base;
-    return toMinSec_csv(randint(lo,hi));
+    const lo = betterIsLower ? b : a;
+    const hi = betterIsLower ? a : b;
+    if(hi<=lo) return base;
+    return toMinSec_csv(randint(lo,hi-1));
   }
-  if(isMedball(name) || /100\s*м/i.test(name)){
-    const d = Math.max(decimalsCount(base), decimalsCount(stripQuotes(next)), isMedball(name)?2:1);
+
+  // 100 м: шаг 0.1 с
+  if(isHundred(name)){
     const a = parseFloat(String(base).replace(',','.'));
     const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    let from, to;
-    if(betterIsLower){ from=b; to=a; if(to<=from) return base; }
-    else{ from=a; to=b; if(to<=from) return base; }
+    let from,to;
+    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+    if(to<=from) return base;
     const step=0.1;
     const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
     if(kTo<kFrom) return base;
     const k=randint(kFrom,kTo);
-    return formatDecComma(k*step, d);
+    return formatDecComma(k*step, 1);
   }
-  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !/100\s*м/i.test(name))){
+
+  // Медбол: шаг 0.05 м, 2 знака
+  if(isMedball(name)){
+    const a = parseFloat(String(base).replace(',','.'));
+    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    let from,to;
+    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+    if(to<=from) return base;
+    const step=0.05;
+    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=randint(kFrom,kTo);
+    return formatDecComma(k*step, 2);
+  }
+
+  // Функц. витривалість: крок 1 м
+  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
     const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = isLowerBetter(name,unit) ? (b+1) : a;
-    const hi = isLowerBetter(name,unit) ? a : (b-1);
+    const lo = betterIsLower ? (b+1) : a;
+    const hi = betterIsLower ? a : (b-1);
     if(hi<lo) return base;
     return String(randint(lo,hi));
   }
+
+  // Повторы
   if(isReps(unit)){
     const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = isLowerBetter(name,unit) ? (b+1) : a;
-    const hi = isLowerBetter(name,unit) ? a : (b-1);
+    const lo = betterIsLower ? (b+1) : a;
+    const hi = betterIsLower ? a : (b-1);
     if(hi<lo) return base;
     return String(randint(lo,hi));
   }
@@ -429,16 +454,26 @@ function activeThreshold(){
   return best;
 }
 
-/* 80/15/5 */
+/* Сэмплирование 80/15/5 вокруг минимума для выбранной оценки */
 function sampleSkewed(minSum, nextSum){
   const x=Math.max(1,nextSum-minSum);
   const r=Math.random();
   let lo=minSum, hi=minSum+Math.floor(0.3*x);
   if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
   else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
-  if(hi>=nextSum) hi=nextSum-1;
+  hi=Math.min(hi,nextSum-1);
   if(hi<lo) hi=lo;
   return randint(lo,hi);
+}
+
+/* Транк. нормальное для двойки: в пределах [s3-0.3*s3, s3-1] */
+function randn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function sampleTruncNormal(a,b,mean,sd){
+  for(let i=0;i<16;i++){
+    const x = mean + sd*randn();
+    if(x>=a && x<=b) return Math.round(x);
+  }
+  return randint(Math.ceil(a), Math.floor(b));
 }
 
 /* Підтягування/КСВ */
@@ -454,17 +489,29 @@ function choosePullOrKsv(scales){
 function generateOnce(){
   const th=activeThreshold()||{min_per_exercise:'10',sum_for_grade_3:'60',sum_for_grade_4:'80',sum_for_grade_5:'95'};
   const minPer=onlyNumber(th.min_per_exercise);
-  const s5=onlyNumber(th.sum_for_grade_5), s4=onlyNumber(th.sum_for_grade_4), s3=onlyNumber(th.sum_for_grade_3);
+  let s3=onlyNumber(th.sum_for_grade_3), s4=onlyNumber(th.sum_for_grade_4), s5=onlyNumber(th.sum_for_grade_5);
+
+  if(!s3 && s4){ s3=Math.max(1, Math.round(s4*0.8)); }
+  if(!s4 && s5){ s4=Math.max(s3+1, Math.round(s5*0.9)); }
+  if(!s5 && s4){ s5=Math.max(s4+1, Math.round(s4*1.1)); }
 
   let minSum,nextSum,target;
-  if(grade===5){ const step=(s5&&s4)?Math.max(1,s5-s4):10; minSum=s5; nextSum=s5+step; target=sampleSkewed(minSum,nextSum); }
-  else if(grade===4){ minSum=s4; nextSum=s5; target=sampleSkewed(minSum,nextSum); }
-  else if(grade===3){ minSum=s3; nextSum=s4; target=sampleSkewed(minSum,nextSum); }
-  else { minSum=Math.max(3*minPer,0); nextSum=s3||(minSum+15);
-         const x=Math.max(1,nextSum-minSum); const r=Math.random();
-         let lo=minSum, hi=nextSum-1, a=lo+Math.floor(0.3*x), b=lo+Math.floor(0.5*x), c=lo+Math.floor(0.7*x);
-         if(r<0.8){ hi=Math.min(a,nextSum-1); } else if(r<0.95){ lo=a; hi=Math.min(b,nextSum-1); } else { lo=b; hi=Math.min(c,nextSum-1); }
-         if(hi<lo) hi=lo; target=randint(lo,hi); }
+  if(grade===5){
+    minSum=s5; nextSum=s5 + Math.max(2, Math.round(0.1*s5));
+    target=sampleSkewed(minSum,nextSum);
+  } else if(grade===4){
+    minSum=s4; nextSum=Math.max(s4+1, s5||s4+10);
+    target=sampleSkewed(minSum,nextSum);
+  } else if(grade===3){
+    minSum=s3; nextSum=Math.max(s3+1, s4||s3+10);
+    target=sampleSkewed(minSum,nextSum);
+  } else { // grade 2
+    const hi = Math.max(0, s3-1);
+    const lo = Math.max(0, Math.ceil(s3 - 0.3*s3));
+    const mean = hi - (hi-lo)*0.25;
+    const sd = (hi-lo)/6 || 1;
+    target = clamp(sampleTruncNormal(lo, hi, mean, sd), lo, hi);
+  }
 
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
   let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
@@ -472,26 +519,28 @@ function generateOnce(){
   for(const n of names){ if(!scales[n]) return null; }
 
   const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
-  const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean;
-  const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
+  const meanPts=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
+  const loPts=Math.max(minPer,Math.floor(meanPts-devMax)); const hiPts=Math.ceil(meanPts+devMax);
   const resFor = (n,pts) => {
     const s=scales[n]; if(!s) return null;
     const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
-    return variedResult(n, s.unit, pts, s.map);
+    const v = variedResult(n, s.unit, pts, s.map);
+    return v||base;
   };
 
   for(let tries=0; tries<15000; tries++){
-    const c1=allowed[0].filter(v=>v>=lo&&v<=hi); const c2=allowed[1].filter(v=>v>=lo&&v<=hi);
+    const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
+    const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
     if(!c1.length||!c2.length) break;
     const v1=c1[Math.floor(Math.random()*c1.length)];
     const v2=c2[Math.floor(Math.random()*c2.length)];
-    const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
+    const v3=target-v1-v2; if(v3<loPts||v3>hiPts) continue; if(!allowed[2].includes(v3)) continue;
     const r1=resFor(names[0],v1), r2=resFor(names[1],v2), r3=resFor(names[2],v3);
     if(!r1||!r2||!r3) continue;
     return [
-      {name:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
-      {name:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
-      {name:names[2], points: v3, result:r3, badge:(scales[names[2]].id||'—')},
+      {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
+      {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
+      {name:names[2], displayName:names[2], points: v3, result:r3, badge:(scales[names[2]].id||'—')},
     ];
   }
   return null;
