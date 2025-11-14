@@ -106,9 +106,9 @@ tfoot td{background:#f8fafc;font-weight:600}
     <table>
       <thead><tr><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
       <tbody id="tbody">
-        <tr><td><span class="badge">1</span>Метання медболу</td><td>—</td><td>—</td></tr>
+        <tr><td><span class="badge">—</span>Метання медболу</td><td>—</td><td>—</td></tr>
         <tr><td><span class="badge">2/14</span>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
-        <tr><td><span class="badge">32б</span>Функц. витривалість</td><td>—</td><td>—</td></tr>
+        <tr><td><span class="badge">—</span>Функц. витривалість</td><td>—</td><td>—</td></tr>
       </tbody>
       <tfoot><tr><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
     </table>
@@ -139,93 +139,62 @@ tfoot td{background:#f8fafc;font-weight:600}
 
 <script>
 /* ====== Версия (cache-bust CSV) ====== */
-const VER='r15';
+const VER='r17';
 
-/* ====== Константы/состояние ====== */
-const GROUPED='pull_or_ksv';
+/* ====== Состояние ====== */
+const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
-let picked=['метання медболу', GROUPED, 'функціональна витривалість'];
-const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false };
+let picked=[GROUPED]; // після завантаження CSV підставимо дефолти
+const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
-/* ====== Нормализация имён ====== */
-const norm = s => String(s||'').toLowerCase().trim().replace(/[\s\u00A0]+/g,' ');
-const NAME_MAP = new Map([
-  ['метання медболу','метання медболу'],
-  ['підтягування на перекладині','підтягування на перекладині'],
-  ['комплексна силова вправа','комплексна силова вправа'],
-  ['біг на 100 м','біг на 100 м'],
-  ['біг на 1 км','біг на 1 км'],
-  ['функціональна витривалість','функціональна витривалість'],
-]);
-function canonName(s){ const c=NAME_MAP.get(norm(s)); return c||norm(s); }
-function labelOf(cn){
-  if(cn===GROUPED) return 'Підтягування / КСВ';
-  if(cn==='метання медболу') return 'Метання медболу';
-  if(cn==='підтягування на перекладині') return 'Підтягування на перекладині';
-  if(cn==='комплексна силова вправа') return 'КСВ';
-  if(cn==='біг на 100 м') return 'Біг на 100 м';
-  if(cn==='біг на 1 км') return 'Біг на 1 км';
-  if(cn==='функціональна витривалість') return 'Функц. витривалість';
-  return cn;
-}
-
-/* ====== Детект разделителя ====== */
+/* ====== Утилиты ====== */
+const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+const onlyNumber = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
 function pickDelim(first, allowComma=false){
   if(first.includes('\t')) return '\t';
   if(first.includes(';')) return ';';
   if(first.includes('|')) return '|';
-  if(allowComma && first.includes(',')) return ','; // для thresholds можно
+  if(allowComma && first.includes(',')) return ',';
   return '\t';
 }
 async function fetchText(url){ const r=await fetch(url+`?v=${VER}`); if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); }
 
-/* ====== ШКАЛЫ (scales_*.csv) ====== */
-// Поддерживаем:
-//  A) [ID, Назва, Одиниця, Бал, Результат] (как в примере с "14 ...")
-//  B) [Назва, Одиниця, Бал, Результат] (без ID)
-// Запятая НИКОГДА не выступает разделителем (иначе сломает "12,3").
+/* ====== ШКАЛЫ: строго по названиям из CSV ====== */
 async function loadScales(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return {};
-  const delim=pickDelim(lines[0], /*allowComma*/ false);
+  const delim=pickDelim(lines[0], false); // запятая мешает десятичным результатам
   const rows=lines.map(line=> line.split(delim).map(c=>c.trim()));
-
-  // Определим, есть ли заголовок (ищем слова Назва/Одиниця/Бал/Результат)
   const headerJoin = rows[0].join(' ').toLowerCase();
   const hasHeader = /назва|одиниц|бал|результат/.test(headerJoin);
   const data = hasHeader ? rows.slice(1) : rows;
-
   const byName={};
   for(const cols of data){
     if(!cols.length) continue;
     let id='', name='', unit='', pts='', res='';
-
-    // Схема A: первая колонка цифры (или "32б") и всего колонок >=5 => трактуем как [ID, Name, Unit, Points, Result]
     const first=cols[0];
-    const isID = /^\d+$/.test(first) || /^\d+\s*б$/i.test(first) || /^\d+\s*[a-zа-я]$/i.test(first);
-    if(isID && cols.length>=5){
+    const looksLikeID = /^\d+$/.test(first) || /^\d+\s*[a-zа-я]$/i.test(first); // допускаем 32б
+    if(looksLikeID && cols.length>=5){
       [id, name, unit, pts, res] = [cols[0], cols[1], cols[2], cols[3], cols[4]];
     }else{
-      // Схема B: без ID
       [name, unit, pts, res] = [cols[0]||'', cols[1]||'', cols[2]||'', cols[3]||''];
     }
-
-    const cn = canonName(name);
-    const p = parseInt(String(pts||'').replace(/\s/g,''),10);
-    if(!cn || !Number.isFinite(p)) continue;
-    if(!byName[cn]) byName[cn] = { id: (id||'—'), unit, map:{} };
-    byName[cn].map[p] = res;
+    if(!name) continue;
+    const points = parseInt(String(pts||'').replace(/\s/g,''),10);
+    if(!Number.isFinite(points)) continue;
+    if(!byName[name]) byName[name] = { id: (id||'—'), unit, map:{} };
+    byName[name].map[points] = res;
   }
   return byName;
 }
 
-/* ====== ПОРОГИ (thresholds_*.csv) ====== */
+/* ====== ПОРОГИ ====== */
 async function loadThresholds(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
   const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return [];
-  const delim=pickDelim(lines[0], /*allowComma*/ true);
+  const delim=pickDelim(lines[0], true);
   const headers = lines[0].split(delim).map(h=>h.trim().toLowerCase());
   const idx = name => headers.indexOf(name);
   const iAge = Math.max(idx('вік'), idx('вікова група'), idx('возрастная группа'), idx('age_group'), idx('група'), idx('группа'));
@@ -249,7 +218,22 @@ async function loadThresholds(url){
   });
 }
 
-/* ====== Загрузка всех CSV ====== */
+/* ====== Имена из CSV ====== */
+function namesFrom(scales){ return Object.keys(scales||{}); }
+function findBy(names, re){ re = (re instanceof RegExp)? re : new RegExp(re,'i'); return names.find(n=>re.test(n)); }
+function computeChoices(){
+  const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
+  const names = namesFrom(scales);
+  state.choices = names; // все имена из CSV
+  // дефолт: медбол, GROUPED, функц (или первые попавшиеся)
+  const med   = findBy(names, /медбол/i);
+  const func  = findBy(names, /функц|витривал/i);
+  const first = names[0] || '—';
+  const second= names.find(n=>n!==first) || first;
+  picked = [ med || first, GROUPED, func || second ].filter(Boolean).slice(0,3);
+}
+
+/* ====== Загрузка ====== */
 async function loadAll(){
   const dataState=document.getElementById('dataState');
   try{
@@ -261,12 +245,14 @@ async function loadAll(){
     ]);
     state.thresholds.M = thM; state.thresholds.J = thW;
     state.scales.M = scM; state.scales.J = scW;
-
-    const mKeys = Object.keys(scM); const wKeys = Object.keys(scW);
-    dataState.textContent = `OK: М[${mKeys.join(', ')||'—'}] Ж[${wKeys.join(', ')||'—'}]`;
-    document.getElementById('genBtn').disabled = false;
-    document.getElementById('loadBox').classList.add('hidden');
     state.ready = true;
+    computeChoices();
+    renderPicked();
+    buildCards();
+    document.getElementById('genBtn').disabled=false;
+    document.getElementById('loadBox').classList.add('hidden');
+    const mCount=Object.keys(scM).length, wCount=Object.keys(scW).length;
+    dataState.textContent = `OK: М(${mCount}) Ж(${wCount})`;
   }catch(e){
     dataState.textContent='Помилка завантаження';
     document.getElementById('loadBox').textContent='Помилка CSV: '+e.message;
@@ -283,15 +269,15 @@ for(let g=1;g<=7;g++){
   lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
 }
 document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;}));
-document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;}));
-document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));      
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value; computeChoices(); renderPicked(); buildCards(); }));
+document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}))
 
 const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
 function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach(r=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><span class="badge">${r.badge||'—'}</span>${labelOf(r.name)}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td><span class="badge">${r.badge||'—'}</span>${r.name===GROUPED? 'Підтягування / КСВ' : r.name}</td><td>${r.result}</td><td>${r.points}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
@@ -301,15 +287,14 @@ function renderPicked(){
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
   const rows = picked.map(n=>{
     if(n===GROUPED) return {name:GROUPED,result:'—',points:'—',badge:'2/14'};
-    const cn=canonName(n);
-    const badge = (scales[cn] && scales[cn].id) ? String(scales[cn].id) : '—';
-    return {name:cn,result:'—',points:'—',badge};
+    const info = scales[n];
+    const badge = info? String(info.id||'—') : '—';
+    return {name:n,result:'—',points:'—',badge};
   });
   renderRows(rows);
 }
-renderPicked();
 
-/* ====== Модал выбора 3-х вправ ====== */
+/* ====== Модал вибору 3-х вправ ====== */
 const modalBack=document.getElementById('modalBack');
 const editBtn=document.getElementById('editBtn');
 const closeModal=document.getElementById('closeModal');
@@ -318,13 +303,30 @@ const cardList=document.getElementById('cardList');
 const selCount=document.getElementById('selCount');
 
 function buildCards(){
-  const CHOICES=['метання медболу', GROUPED, 'біг на 100 м', 'біг на 1 км', 'функціональна витривалість'];
   cardList.innerHTML='';
   let temp=[...picked];
-  CHOICES.forEach(name=>{
+  const names = state.choices || [];
+
+  // «Підтягування / КСВ» — как единый пункт
+  const hasPull = names.some(n=>/підтяг|подтяг/i.test(n));
+  const hasKsv  = names.some(n=>/комплексн.*силов/i.test(n));
+  if(hasPull||hasKsv){
+    const div=document.createElement('div');
+    div.className='card'+(temp.includes(GROUPED)?' sel':'');
+    div.textContent='Підтягування / КСВ';
+    div.addEventListener('click',()=>{
+      const i=temp.indexOf(GROUPED);
+      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(GROUPED); }
+      picked=[...temp]; buildCards();
+    });
+    cardList.appendChild(div);
+  }
+
+  // Все названия из CSV
+  names.forEach(name=>{
     const div=document.createElement('div');
     div.className='card'+(temp.includes(name)?' sel':'');
-    div.textContent = (name===GROUPED) ? 'Підтягування / КСВ' : `${labelOf(name)}`;
+    div.textContent = name;
     div.addEventListener('click',()=>{
       const i=temp.indexOf(name);
       if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(name); }
@@ -332,6 +334,7 @@ function buildCards(){
     });
     cardList.appendChild(div);
   });
+
   selCount.textContent=`Обрано: ${picked.length}/3`;
   applySel.disabled=(picked.length!==3);
 }
@@ -340,15 +343,11 @@ closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
 /* ====== Генерация ====== */
-function onlyNumber(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 }
-function randint(a,b){return Math.floor(a+Math.random()*(b-a+1))}
-
 function activeThreshold(){
   const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
   if(!list || !list.length) return null;
   const need=(category==='3'?'3,4':'2');
   let best=null,bestDiff=1e9;
-
   for(const r of list){
     const cat=(String(r.category||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','))||'';
     if(cat!==need) continue;
@@ -366,15 +365,19 @@ function activeThreshold(){
   return best;
 }
 
-function getScales(){ return sex==='M' ? state.scales.M : state.scales.J }
+function choosePullOrKsv(scales){
+  const names = Object.keys(scales);
+  const pull = names.find(n=>/підтяг|подтяг/i.test(n));
+  const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
+  if(sex==='J'){ return ksv || pull || null; }
+  // М: 80% подтягивания, 20% КСВ
+  if(Math.random()<0.8){ return pull || ksv || null; }
+  return ksv || pull || null;
+}
 
 function generate(){
   if(!state.ready){ alert('Дані ще не завантажені'); return; }
-  let th=activeThreshold();
-  if(!th){
-    th={min_per_exercise:'10',sum_for_grade_3:'60',sum_for_grade_4:'80',sum_for_grade_5:'95'};
-    document.getElementById('dataState').textContent='Fallback пороги (перевір CSV)';
-  }
+  const th=activeThreshold()||{min_per_exercise:'10',sum_for_grade_3:'60',sum_for_grade_4:'80',sum_for_grade_5:'95'};
   const minPer=onlyNumber(th.min_per_exercise);
   const s5=onlyNumber(th.sum_for_grade_5), s4=onlyNumber(th.sum_for_grade_4), s3=onlyNumber(th.sum_for_grade_3);
   let minSum,nextSum;
@@ -393,23 +396,17 @@ function generate(){
     if(hi>=nextSum) hi=nextSum-1; if(hi<lo) hi=lo; target=randint(lo,hi);
   }
 
-  const scales=getScales()||{};
-  let names=[...picked];
-  if(names.includes(GROUPED)){
-    const hasPull = !!scales[canonName('підтягування на перекладині')];
-    const hasKsv  = !!scales[canonName('комплексна силова вправа')];
-    let chosen=null;
-    if (sex==='J') { chosen = hasKsv ? 'комплексна силова вправа' : (hasPull?'підтягування на перекладині':null); }
-    else { chosen = (Math.random()<0.8) ? (hasPull?'підтягування на перекладині':(hasKsv?'комплексна силова вправа':null))
-                                        : (hasKsv?'комплексна силова вправа':(hasPull?'підтягування на перекладині':null)); }
-    if(!chosen){ alert('Немає шкали для Підтягування/КСВ'); return; }
-    names = names.map(n=> n===GROUPED ? chosen : n);
-  }
+  const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
 
-  const cnames = names.map(canonName);
-  for(const n of cnames){ if(!scales[n]){ alert('Немає шкали для '+labelOf(n)); return; } }
+  // Разворачиваем GROUPED
+  let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
+  if(names.includes(null)){ alert('Немає шкали для Підтягування/КСВ у CSV'); return; }
 
-  const allowed = cnames.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
+  // Проверяем существование
+  for(const n of names){ if(!scales[n]){ alert('Немає шкали для '+n); return; } }
+
+  // Разрешённые баллы (>= minPer)
+  const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
   const mean=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*mean; const lo=Math.max(minPer,Math.floor(mean-devMax)); const hi=Math.ceil(mean+devMax);
   const resFor = (n,pts) => { const v=scales[n].map[pts]; return (v && v!=='-' && v!=='—') ? v : null; };
 
@@ -420,12 +417,12 @@ function generate(){
     const v1=c1[Math.floor(Math.random()*c1.length)];
     const v2=c2[Math.floor(Math.random()*c2.length)];
     const v3=target-v1-v2; if(v3<lo||v3>hi) continue; if(!allowed[2].includes(v3)) continue;
-    const r1=resFor(cnames[0],v1), r2=resFor(cnames[1],v2), r3=resFor(cnames[2],v3);
+    const r1=resFor(names[0],v1), r2=resFor(names[1],v2), r3=resFor(names[2],v3);
     if(!r1||!r2||!r3) continue;
     solution=[
-      {name:cnames[0], points:v1, result:r1, badge:(scales[cnames[0]].id||'—')},
-      {name:cnames[1], points:v2, result:r2, badge:(scales[cnames[1]].id||'—')},
-      {name:cnames[2], points:v3, result:r3, badge:(scales[cnames[2]].id||'—')},
+      {name:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
+      {name:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
+      {name:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
     ];
     break outer;
   }
@@ -435,11 +432,10 @@ function generate(){
 
 /* ====== События ====== */
 document.getElementById('genBtn').addEventListener('click',generate);
-document.getElementById('editBtn').addEventListener('click',()=>{}); // логика в buildCards
 
 // init
 if('serviceWorker' in navigator){
-window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(console.error); });
 }
 loadAll();
 </script>
