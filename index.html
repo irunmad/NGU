@@ -551,9 +551,9 @@ function generateOnce(){
   let s3=onlyNumber(th.sum_for_grade_3), s4=onlyNumber(th.sum_for_grade_4), s5=onlyNumber(th.sum_for_grade_5);
 
   // страховки, если в CSV есть дыры
-  if(!s3 && s4){ s3=Math.max(1, Math.round(s4*0.8)); }
-  if(!s4 && s5){ s4=Math.max(s3+1, Math.round(s5*0.9)); }
-  if(!s5 && s4){ s5=Math.max(s4+1, Math.round(s4*1.1)); }
+//  if(!s3 && s4){ s3=Math.max(1, Math.round(s4*0.8)); }
+ // if(!s4 && s5){ s4=Math.max(s3+1, Math.round(s5*0.9)); }
+ // if(!s5 && s4){ s5=Math.max(s4+1, Math.round(s4*1.1)); }
 
   let minSum,nextSum,target;
   if(grade===5){
