@@ -15,9 +15,9 @@ background:radial-gradient(1200px 500px at 0% -10%,var(--bg2),transparent 60%),l
 .wrap{max-width:100%;margin:0 auto;padding:12px}
 .topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
 .logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px}
-.chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
+.chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:#64748b}
 fieldset{border:1px solid var(--br);border-radius:12px;padding:6px 10px;background:var(--card);width:fit-content}
-legend{font-size:12px;color:var(--muted);padding:0 6px}
+legend{font-size:12px;color:#64748b;padding:0 6px}
 .tight{display:inline-flex;align-items:center;gap:10px;min-width:0}
 .controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
@@ -38,7 +38,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 @media (max-width:520px){.actions{grid-template-columns:1fr}}
-.muted{color:var(--muted)}
+.muted{color:#64748b}
 .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
 .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
@@ -46,7 +46,6 @@ tfoot td{background:#f8fafc;font-weight:600}
 .card{border:1px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;box-shadow:0 2px 10px rgba(2,6,23,.04);user-select:none}
 .card.sel{background:#ecfdf5;border-color:#34d399}
 .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.hidden{display:none}
 .small{font-size:12px}
 </style>
 </head>
@@ -54,7 +53,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r31</div>
+    <div class="chip">Генератор оцінки · r32</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -126,30 +125,29 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r31';
+const VER='r32';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
-const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-const stripQuotes = s => String(s??'').replace(/^\\s*["'«»]+|["'«»]+\\s*$/g,'').trim();
-const onlyInt = s => { const m=String(s||'').match(/(\\d+)/); return m?parseInt(m[1],10):0 };
+const stripQuotes = s => String(s??'').replace(/^\s*["'«»]+|["'«»]+\s*$/g,'').trim();
+const onlyInt = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
 
 function pickDelim(first){
-  if(first.includes('\\t')||/\\u0009/.test(first)) return '\\t';
+  if(first.includes('\t')||/\u0009/.test(first)) return '\t';
   if(first.includes(';')) return ';';
   if(first.includes('|')) return '|';
   if(first.includes(',')) return ',';
-  return '\\t';
+  return '\t';
 }
 function parseCSVLine(line, delim){
-  if(delim==='\\t') delim = '\\t'.replace('\\\\t','\\t');
+  if(delim==='\t') delim = '\t'.replace('\\t','\t');
   const out=[]; let cur=''; let q=false;
   for(let i=0;i<line.length;i++){
     const ch=line[i];
-    if(ch==='\"'){ if(q && line[i+1]==='\"'){ cur+='\"'; i++; } else { q=!q; } }
+    if(ch==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else { q=!q; } }
     else if(ch===delim && !q){ out.push(cur); cur=''; }
     else{ cur+=ch; }
   }
@@ -163,9 +161,10 @@ async function fetchText(url){
   return r.text();
 }
 
+/* ===== ШКАЛЫ ===== */
 async function loadScales(url){
-  const txt=(await fetchText(url)).replace(/^\\uFEFF/,'');
-  const lines=txt.split(/\\r?\\n/).filter(x=>x.trim().length);
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return {};
   const delim=pickDelim(lines[0]);
   const rows=lines.map(line=>parseCSVLine(line,delim));
@@ -186,7 +185,7 @@ async function loadScales(url){
     const name = stripQuotes(c[iName]||''); if(!name) continue;
     const id   = iID>=0? stripQuotes(c[iID]||'') : '—';
     const unit = stripQuotes(c[iUnit]||'');
-    const pts  = parseInt(stripQuotes(c[iPts]||'').replace(/\\s/g,''),10);
+    const pts  = parseInt(stripQuotes(c[iPts]||'').replace(/\s/g,''),10);
     const res  = stripQuotes(c[iRes]||'');
     if(!Number.isFinite(pts) || !res) continue;
     if(!byName[name]) byName[name] = { id, unit, map:{} };
@@ -195,31 +194,45 @@ async function loadScales(url){
   return byName;
 }
 
+/* ===== ПОРОГИ (строгие названия + алиасы апострофа) ===== */
+function headerIdx(headers, name){
+  const variants = [name];
+  variants.push(name.replace(/\u2019/g,"'"));
+  variants.push(name.replace(/'/g,"\u2019"));
+  for(const v of variants){
+    const i=headers.indexOf(v);
+    if(i!==-1) return i;
+  }
+  return -1;
+}
 async function loadThresholds(url){
-  const txt=(await fetchText(url)).replace(/^\\uFEFF/,'');
-  const lines=txt.split(/\\r?\\n/).filter(x=>x.trim().length);
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
   if(!lines.length) return [];
   const delim=pickDelim(lines[0]);
   const rows=lines.map(line=>parseCSVLine(line,delim));
   const headers = rows[0].map(h=>h.trim());
-  const H = Object.fromEntries(headers.map((h,i)=>[h,i]));
 
-  const must = ['Вікова група','Категорія','Пороговий мінімум','Сума з трьох вправ','Сума з чотирьох вправ','Сума з п’яти вправ'];
-  for(const key of must){
-    if(!(key in H)) throw new Error('Відсутній стовпець: '+key);
-  }
+  const iAge = headerIdx(headers,'Вікова група');
+  const iCat = headerIdx(headers,'Категорія');
+  const iMin = headerIdx(headers,'Пороговий мінімум');
+  const iS3  = headerIdx(headers,'Сума з трьох вправ');
+  const iS4  = headerIdx(headers,'Сума з чотирьох вправ');
+  const iS5  = headerIdx(headers,'Сума з п’яти вправ');
+  if([iAge,iCat,iMin,iS3,iS4,iS5].some(x=>x<0)) throw new Error('Відсутні колонки порогів');
 
   const out = rows.slice(1).map(r=> ({
-    age_group: r[H['Вікова група']]||'',
-    category:  (r[H['Категорія']]||'').replace(/[\\s\\u00A0]/g,'').replace(/[,;]+/g,','),
-    min_per_exercise: r[H['Пороговий мінімум']]||'',
-    sum_for_grade_3:  r[H['Сума з трьох вправ']]||'',
-    sum_for_grade_4:  r[H['Сума з чотирьох вправ']]||'',
-    sum_for_grade_5:  r[H['Сума з п’яти вправ']]||'',
+    age_group: r[iAge]||'',
+    category:  (r[iCat]||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','),
+    min_per_exercise: r[iMin]||'',
+    sum_for_grade_3:  r[iS3]||'',
+    sum_for_grade_4:  r[iS4]||'',
+    sum_for_grade_5:  r[iS5]||'',
   }));
   return out;
 }
 
+/* ===== список вправ ===== */
 function computeChoices(){
   const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
   const names = Object.keys(scales);
@@ -233,6 +246,7 @@ function computeChoices(){
   picked = [ first, (pull||ksv)? GROUPED : (pull||ksv), second ].filter(Boolean).slice(0,3);
 }
 
+/* ===== загрузка ===== */
 async function loadAll(){
   const dataState=document.getElementById('dataState');
   try{
@@ -260,6 +274,7 @@ async function loadAll(){
   }
 }
 
+/* ===== UI ===== */
 const ageGrid = document.getElementById('ageGrid');
 for(let g=1;g<=7;g++){
   const lab=document.createElement('label'); lab.className='inline';
@@ -272,16 +287,6 @@ document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('ch
 document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}))
 
 const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
-function renderRows(rows){
-  tbody.innerHTML='';
-  rows.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
-    tbody.appendChild(tr);
-  });
-  const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
-  sumEl.textContent=total;
-}
 function renderPicked(){
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
   const rows = picked.map(n=>{
@@ -298,6 +303,7 @@ function renderPicked(){
   });
 }
 
+/* ===== модал выбора ===== */
 const modalBack=document.getElementById('modalBack');
 const editBtn=document.getElementById('editBtn');
 const closeModal=document.getElementById('closeModal');
@@ -342,17 +348,19 @@ editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='fle
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
+/* ===== помощники ===== */
 function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
 function isReps(unit){ return /раз|рази/i.test(unit); }
-function isHundred(name){ return /100\\s*м/i.test(name); }
+function isHundred(name){ return /100\s*м/i.test(name); }
 function isMedball(name){ return /медбол/i.test(name); }
 function isEndurance(name){ return /витривал/i.test(name); }
-function isMeters(unit){ return /\\bм\\b/i.test(unit); }
+function isMeters(unit){ return /\bм\b/i.test(unit); }
 
 const asComma = (x,d)=>x.toFixed(d).replace('.',',');
 function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
-function toMinSec_csv(total){ total=Math.max(0,total|0); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
+function toMinSec_csv(total){ total=Math.max(0,Math.floor(total)); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
 
+/* ===== варьирование результата в пределах того же балла ===== */
 function variedResult(name, unit, pts, map){
   const base = stripQuotes(map[pts]);
   if(!base) return null;
@@ -412,6 +420,7 @@ function variedResult(name, unit, pts, map){
   return base;
 }
 
+/* ===== выбор подтягування/КСВ 80/20 ===== */
 function choosePullOrKsv(scales){
   const names = Object.keys(scales);
   const pull = names.find(n=>/підтяг|подтяг/i.test(n));
@@ -420,22 +429,25 @@ function choosePullOrKsv(scales){
   return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
 }
 
+/* ===== активная строка порогов ===== */
 function activeThreshold(){
   const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
   if(!list || !list.length) return null;
   const need=(category==='3'?'3,4':'2');
-  return list.find(r=> String(r.category).replace(/[\\s\\u00A0]/g,'').replace(/[,;]+/g,',')===need 
+  return list.find(r=> String(r.category).replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,',')===need 
                       && parseInt(r.age_group,10)===ageGroup) || null;
 }
 
+/* ===== распределения ===== */
 function sampleSkewed(minSum, nextSumExclusive){
+  // строго < nextSumExclusive
   const maxHi = nextSumExclusive-1;
   if(maxHi<minSum) return minSum;
   const x = Math.max(1, nextSumExclusive - minSum);
   const r = Math.random();
-  let lo=minSum, hi=Math.floor(minSum+0.3*x);
-  if(r>=0.8 && r<0.95){ lo=Math.floor(minSum+0.3*x); hi=Math.floor(minSum+0.5*x); }
-  else if(r>=0.95){    lo=Math.floor(minSum+0.5*x); hi=Math.floor(minSum+0.7*x); }
+  let lo=minSum, hi=Math.floor(minSum+0.3*x)-1;
+  if(r>=0.8 && r<0.95){ lo=Math.floor(minSum+0.3*x); hi=Math.floor(minSum+0.5*x)-1; }
+  else if(r>=0.95){    lo=Math.floor(minSum+0.5*x); hi=Math.floor(minSum+0.7*x)-1; }
   hi = Math.min(hi, maxHi);
   lo = Math.min(lo, hi);
   return Math.floor(Math.random()*(hi-lo+1))+lo;
@@ -444,33 +456,39 @@ function randn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(
 function sampleTruncNormal(a,b,mean,sd){
   a=Math.ceil(a); b=Math.floor(b);
   if(b<a) return a;
-  for(let i=0;i<16;i++){
+  for(let i=0;i<24;i++){
     const x = Math.floor(mean + sd*randn());
     if(x>=a && x<=b) return x;
   }
   return Math.floor(Math.random()*(b-a+1))+a;
 }
 
+/* ===== генерация ===== */
 function generateOnce(){
   const th=activeThreshold();
   if(!th) return null;
   const minPer=onlyInt(th.min_per_exercise);
   const s3=onlyInt(th.sum_for_grade_3), s4=onlyInt(th.sum_for_grade_4), s5=onlyInt(th.sum_for_grade_5);
 
-  let target;
+  // целевой суммарный бал
+  let target, nextBound;
   if(grade===5){
-    const nextExcl = s5 + Math.max(2, Math.floor(0.1*s5));
-    target = sampleSkewed(s5, nextExcl);
+    nextBound = s5 + Math.max(2, Math.floor(0.1*s5)); // искусственный верх
+    target = sampleSkewed(s5, nextBound);
   } else if(grade===4){
-    target = sampleSkewed(s4, (s5||s4+999999));
+    nextBound = s5 || (s4+999999);
+    target = sampleSkewed(s4, nextBound);
   } else if(grade===3){
-    target = sampleSkewed(s3, (s4||s3+999999));
+    nextBound = s4 || (s3+999999);
+    target = sampleSkewed(s3, nextBound);
   } else {
+    // 2: строго ниже 3
     const hi = Math.max(0, s3-1);
-    const lo = Math.max(0, Math.floor(s3 - 0.3*s3));
+    const lo = Math.max(0, Math.floor(s3*0.7)); // S3 - 30%*S3
     const mean = Math.floor(hi - (hi-lo)*0.2);
     const sd = (hi-lo)/6 || 1;
-    target = clamp(sampleTruncNormal(lo, hi, mean, sd), lo, hi);
+    nextBound = s3;
+    target = Math.min(sampleTruncNormal(lo, hi, mean, sd), hi);
   }
 
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
@@ -478,6 +496,7 @@ function generateOnce(){
   if(names.includes(null)) return null;
   for(const n of names){ if(!scales[n]) return null; }
 
+  // допустимые по баллам
   const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
   const meanPts=Math.floor(target/3);
   const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
@@ -491,16 +510,33 @@ function generateOnce(){
     return v||base;
   };
 
-  for(let tries=0; tries<15000; tries++){
+  for(let tries=0; tries<20000; tries++){
     const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
     const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
     if(!c1.length||!c2.length) break;
     const v1=c1[Math.floor(Math.random()*c1.length)];
-    const v2=c2[Math.floor(Math.random()*c2.length)];
+    const v2=c2[Math.floor(Math.random()*(c2.length))];
     let v3=target-v1-v2;
     if(v3>hiPts) v3=hiPts;
     if(v3<loPts) continue;
     if(!allowed[2].includes(v3)) continue;
+
+    // жёсткий потолок по сумме: < nextBound
+    let sum=v1+v2+v3;
+    if(sum>=nextBound){
+      let over = sum-(nextBound-1);
+      while(over>0){
+        let arr=[v1,v2,v3];
+        let idx=arr.indexOf(Math.max(...arr));
+        if(idx===0 && v1>loPts){ v1--; over--; }
+        else if(idx===1 && v2>loPts){ v2--; over--; }
+        else if(idx===2 && v3>loPts){ v3--; over--; }
+        else break;
+      }
+      sum=v1+v2+v3;
+      if(sum>=nextBound) continue;
+    }
+
     const r1=resFor(names[0],v1), r2=resFor(names[1],v2), r3=resFor(names[2],v3);
     if(!r1||!r2||!r3) continue;
     return [
@@ -514,26 +550,16 @@ function generateOnce(){
 function generate(){
   if(!state.ready){ return; }
   let solution=null;
-  for(let attempt=0; attempt<100 && !solution; attempt++){ solution = generateOnce(); }
+  for(let attempt=0; attempt<120 && !solution; attempt++){ solution = generateOnce(); }
   if(solution){ 
-    const th=activeThreshold();
-    const cap = grade===5 ? Infinity : (grade===4 ? onlyInt(th.sum_for_grade_5)||Infinity : onlyInt(th.sum_for_grade_4));
-    const total = solution.reduce((a,r)=>a+Number(r.points||0),0);
-    if(Number.isFinite(cap) && total>=cap){
-      const diff = total-(cap-1);
-      for(let d=0; d<diff; d++){
-        let idx = solution.map(r=>r.points).indexOf(Math.max(...solution.map(r=>r.points)));
-        solution[idx].points -= 1;
-      }
-    }
-    const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
     tbody.innerHTML='';
     solution.forEach(r=>{
       const tr=document.createElement('tr');
       tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
       tbody.appendChild(tr);
     });
-    sumEl.textContent=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+    const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+    sumEl.textContent=Math.floor(total);
   }
 }
 
