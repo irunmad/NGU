@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Генератор · r44</title>
+<title>Генератор · r45</title>
 <style>
 :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
 *{box-sizing:border-box}
@@ -54,7 +54,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">r44</div>
+    <div class="chip">r45</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -128,7 +128,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r44';
+const VER='r45';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -139,13 +139,13 @@ const dataState = $('#dataState'), errBox = $('#err');
 function showErr(s){ errBox.textContent=String(s); errBox.style.display='block'; }
 function setState(s){ dataState.textContent=s; }
 
-function stripQuotes(s){ return String(s??'').replace(/^\s*[\"'«»]+|[\"'«»]+\s*$/g,'').trim(); }
-function onlyInt(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0; }
+function stripQuotes(s){ return String(s??'').replace(/^\\s*[\\"'«»]+|[\\"'«»]+\\s*$/g,'').trim(); }
+function onlyInt(s){ const m=String(s||'').match(/(\\d+)/); return m?parseInt(m[1],10):0; }
 function asComma(x,d){ return x.toFixed(d).replace('.',','); }
 
-function pickDelim(line){ if(line.includes('\t')) return '\t'; if(line.includes(';')) return ';'; if(line.includes('|')) return '|'; return ','; }
+function pickDelim(line){ if(line.includes('\\t')) return '\\t'; if(line.includes(';')) return ';'; if(line.includes('|')) return '|'; return ','; }
 function parseCSV_exact(text, expectHeaders){
-  const lines = String(text).replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim().length);
+  const lines = String(text).replace(/^\\uFEFF/,'').split(/\\r?\\n/).filter(x=>x.trim().length);
   if(!lines.length) throw new Error('Порожній файл');
   const delim = pickDelim(lines[0]);
   const rows = lines.map(l=>{
@@ -161,7 +161,7 @@ function parseCSV_exact(text, expectHeaders){
   });
   const header = rows[0];
   const same = expectHeaders.every((h,idx)=> String(header[idx]||'').trim()===h);
-  if(!same) throw new Error('Заголовки не співпадають. Очікується: '+expectHeaders.join(' | ')+'\nФайл має: '+header.join(' | '));
+  if(!same) throw new Error('Заголовки не співпадають. Очікується: '+expectHeaders.join(' | ')+'\\nФайл має: '+header.join(' | '));
   return rows;
 }
 
@@ -179,7 +179,7 @@ async function loadScales(url){
   for(const r of rows.slice(1)){
     const name=stripQuotes(r[iName]||''); if(!name) continue;
     const unit=stripQuotes(r[iUnit]||'');
-    const pts =parseInt(String(r[iPts]||'').replace(/\s/g,''),10);
+    const pts =parseInt(String(r[iPts]||'').replace(/\\s/g,''),10);
     const res =stripQuotes(r[iRes]||'');
     const id  =stripQuotes(r[iID]||'')||'—';
     if(!Number.isFinite(pts)||!res) continue;
@@ -192,7 +192,7 @@ async function loadScales(url){
 function toSex(s){ s=String(s||'').trim().toLowerCase(); if(s.startsWith('чоло')) return 'M'; if(s.startsWith('ж')) return 'J'; return s.toUpperCase(); }
 async function loadThresholds(url){
   const text = await fetchText(url);
-  const lines = String(text).replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim().length);
+  const lines = String(text).replace(/^\\uFEFF/,'').split(/\\r?\\n/).filter(x=>x.trim().length);
   if(!lines.length) throw new Error('Порожній файл');
   const delim = pickDelim(lines[0]);
   const rows = lines.map(l=>{
@@ -342,14 +342,11 @@ editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='fle
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
-function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
 function isReps(unit){ return /раз|рази/i.test(unit); }
-function isHundred(name){ return /100\s*м/i.test(name); }
+function isHundred(name){ return /100\\s*м/i.test(name); }
 function isMedball(name){ return /медбол/i.test(name); }
 function isEndurance(name){ return /витривал/i.test(name); }
-function isMeters(unit){ return /\bм\b/i.test(unit); }
-function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
-function toMinSec_csv(total){ total=Math.max(0,Math.floor(total)); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
+function isMeters(unit){ return /\\bм\\b/i.test(unit); }
 
 function variedResult(name, unit, pts, map){
   const baseRaw = String(map[pts] ?? '').trim();
@@ -385,11 +382,11 @@ function variedResult(name, unit, pts, map){
     return asComma(a,1);
   }
 
-  // Медбол — всегда варьируем вверх в пределах балла, шаг 0.05 м
+  // Медбол — варьируем вверх в пределах балла, шаг 0.05 м
   if (isMedball(name)){
     const a = asFloat(base);
     const hasNext = !!map[pts+1];
-    const upper = hasNext ? asFloat(map[pts+1]) : (a+0.45); // мягкий верх, если соседа нет
+    const upper = hasNext ? asFloat(map[pts+1]) : (a+0.45);
     const lo = Math.min(a,upper), hi = Math.max(a,upper);
     if (hi<=lo) return asComma(a,2);
     const step=0.05;
@@ -400,11 +397,12 @@ function variedResult(name, unit, pts, map){
     return asComma(val,2);
   }
 
-  // Витривалість и «метры/разы» — строго целые числа
+  // Функц. витривалість + любые «м»/«рази» НЕ медбол/100м — строго целые
   if (isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name)) || isReps(unit)){
-    const a = parseInt(base,10);
-    const b = map[pts+1] ? parseInt(String(map[pts+1]),10) : NaN;
-    if (!Number.isNaN(b)){
+    const a = Math.floor(parseFloat(base.replace(',','.')));
+    const hasNext = !!map[pts+1];
+    if (hasNext){
+      const b = Math.floor(parseFloat(String(map[pts+1]).replace(',','.')));
       const lo = Math.min(a,b), hi = Math.max(a,b);
       if (hi>lo) return String(Math.floor(Math.random()*(hi-lo))+lo);
     }
