@@ -7,7 +7,17 @@
   "background_color": "#f7fafc",
   "theme_color": "#0f172a",
   "icons": [
-    { "src": "Icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "Icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='92' fill='%230f172a'/><g fill='%23fff'><path d='M128 360h32v-96l-32 24v-40l48-36 48 36v40l-32-24v96h32v24h-96z'/><path d='M232 360h32v-116l-32 24v-40l48-36 48 36v40l-32-24v116h32v24h-96z'/><path d='M336 360h32v-96l-32 24v-40l48-36 48 36v40l-32-24v96h32v24h-96z'/></g><path fill='%235eead4' d='M300 140l-40 72h32l-44 92 104-116h-40l36-48z'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='92' fill='%230f172a'/><g fill='%23fff'><path d='M128 360h32v-96l-32 24v-40l48-36 48 36v40l-32-24v96h32v24h-96z'/><path d='M232 360h32v-116l-32 24v-40l48-36 48 36в40l-32-24v116h32в24h-96z'/></g><path fill='%235eead4' d='M300 140l-40 72h32l-44 92 104-116h-40л36-48з'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }
