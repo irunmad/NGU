@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Генератор · r42</title>
+<title>Генератор · r43</title>
 <style>
 :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
 *{box-sizing:border-box}
@@ -54,7 +54,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">r42</div>
+    <div class="chip">r43</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -128,7 +128,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r42';
+const VER='r43';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -139,7 +139,7 @@ const dataState = $('#dataState'), errBox = $('#err');
 function showErr(s){ errBox.textContent=String(s); errBox.style.display='block'; }
 function setState(s){ dataState.textContent=s; }
 
-function stripQuotes(s){ return String(s??'').replace(/^\s*["'«»]+|["'«»]+\s*$/g,'').trim(); }
+function stripQuotes(s){ return String(s??'').replace(/^\s*[\"'«»]+|[\"'«»]+\s*$/g,'').trim(); }
 function onlyInt(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0; }
 function asComma(x,d){ return x.toFixed(d).replace('.',','); }
 
@@ -352,21 +352,64 @@ function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(
 function toMinSec_csv(total){ total=Math.max(0,Math.floor(total)); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
 
 function variedResult(name, unit, pts, map){
-  const base = stripQuotes(map[pts]); if(!base) return null;
-  const next = map[pts+1]; if(!next) return base;
+  const baseRaw = String(map[pts] ?? '').trim();
+  if(!baseRaw) return null;
+
   const betterIsLower = isLowerBetter(name, unit);
-  if(/км/i.test(name) || /хв/i.test(unit)){
-    const a=parseMinSec_csv(base).total, b=parseMinSec_csv(String(next)).total; const lo = betterIsLower ? b : a; const hi = betterIsLower ? a : b; if(hi<=lo) return base; return toMinSec_csv(Math.floor(Math.random()*(hi-lo))+lo);
+  const neighBetter = map[pts+1];     // «лучший» сосед для нашей сетки баллов
+  const base = String(baseRaw);
+
+  // утилиты
+  const asFloat = s => parseFloat(String(s).replace(',', '.'));
+  const asComma = (x,d) => x.toFixed(d).replace('.', ',');
+  const secFromCsv = s => { const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return (m||0)*60+(sec||0); };
+  const csvFromSec = t => { t=Math.max(0,Math.floor(t)); const m=Math.floor(t/60), s=t%60; return `${m},${String(s).padStart(2,'0')}`; };
+  const varyDiscrete = (lo,hi,step,decimals) => {
+    if(hi<=lo) return base;
+    const kFrom=Math.ceil((lo+1e-9)/step), kTo=Math.floor((hi-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom;
+    return asComma(k*step,decimals);
+  };
+
+  // 1 км (хв, с)
+  if (/км/i.test(name) || /хв/i.test(unit)){
+    const a = secFromCsv(base);
+    const b = neighBetter ? secFromCsv(neighBetter) : null;
+    if (b !== null){
+      const lo = Math.min(a,b), hi = Math.max(a,b);
+      return csvFromSec(Math.floor(Math.random()*(hi-lo))+lo);
+    }
+    return base;
   }
-  if(isHundred(name)){
-    const a = parseFloat(String(base).replace(',','.')); const b = parseFloat(String(next).replace(',','.')); if(!Number.isFinite(a)||!Number.isFinite(b)) return base; let from,to; if(betterIsLower){ from=b; to=a; } else { from=a; to=b; } if(to<=from) return base; const step=0.1; const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step); if(kTo<kFrom) return base; const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom; return asComma(k*step,1);
+
+  // 100 м — десятые
+  if (isHundred(name)){
+    const a = asFloat(base);
+    const b = neighBetter ? asFloat(neighBetter) : NaN;
+    if (!Number.isNaN(b)) return varyDiscrete(Math.min(a,b), Math.max(a,b), 0.1, 1);
+    return asComma(a,1);
   }
-  if(isMedball(name)){
-    const a = parseFloat(String(base).replace(',','.')); const b = parseFloat(String(next).replace(',','.')); if(!Number.isFinite(a)||!Number.isFinite(b)) return base; let from,to; if(betterIsLower){ from=b; to=a; } else { from=a; to=b; } if(to<=from) return base; const step=0.05; const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step); if(kTo<kFrom) return base; const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom; return asComma(k*step,2);
+
+  // Медбол — 0.05 м для всех (М/Ж)
+  if (isMedball(name)){
+    const a = asFloat(base);
+    const b = neighBetter ? asFloat(neighBetter) : NaN;
+    if (!Number.isNaN(b)) return varyDiscrete(Math.min(a,b), Math.max(a,b), 0.05, 2);
+    return asComma(a,2);
   }
-  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name)) || isReps(unit)){
-    const a=parseInt(base,10), b=parseInt(String(next),10); const lo = betterIsLower ? (b+1) : a, hi = betterIsLower ? a : (b-1); if(hi<lo) return base; return String(Math.floor(Math.random()*(hi-lo+1))+lo);
+
+  // Витривалість и «метры/разы» — целые
+  if (isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name)) || isReps(unit)){
+    const a = parseInt(base,10);
+    const b = neighBetter ? parseInt(String(neighBetter),10) : NaN;
+    if (!Number.isNaN(b)){
+      const lo = Math.min(a,b), hi = Math.max(a,b);
+      if (hi>lo) return String(Math.floor(Math.random()*(hi-lo))+lo);
+    }
+    return String(a);
   }
+
   return base;
 }
 
@@ -400,101 +443,91 @@ function sampleSkewed(minSum, nextSumExclusive){
 
 function generate(){
   try{
-    if(!state.ready){ alert('Дані ще завантажуються'); return; }
-    if(!picked || picked.length!==3){ alert('Оберіть рівно 3 вправи'); return; }
+    if(!state.ready){ return; }
+    if(!picked || picked.length!==3){ return; }
     const t = activeThreshold();
-    if(!t){ alert('Пороги не знайдені для вибраних параметрів (стать/категорія/вікова група).'); return; }
+    if(!t){ return; }
 
     const minPer=onlyInt(t.min_per_exercise);
     const s3=onlyInt(t.sum_for_grade_3), s4=onlyInt(t.sum_for_grade_4), s5=onlyInt(t.sum_for_grade_5);
 
-    let target, nextBound, sMin;
-    if(grade===5){
-      sMin = s5; nextBound = s5 + Math.max(2, Math.floor(0.1*s5)); target = sampleSkewed(s5, nextBound);
-    } else if(grade===4){
-      sMin = s4; nextBound = s5 || (s4+999999); target = sampleSkewed(s4, nextBound);
-    } else if(grade===3){
-      sMin = s3; nextBound = s4 || (s3+999999); target = sampleSkewed(s3, nextBound);
-    } else { // 2: строго ниже порога 3, с нормальным распредом в пределах 30% порога
-      const hi = Math.max(0, s3-1);
-      const lo = Math.max(0, Math.floor(s3 - 0.3*s3));
-      const mean = Math.floor(hi - (hi-lo)*0.2);
-      const sd = (hi-lo)/6 || 1;
-      sMin = -Infinity; nextBound = s3; target = Math.min(sampleTruncNormal(lo, hi, mean, sd), hi);
-    }
+    const attemptOnce = ()=>{
+      let target, nextBound, sMin;
+      if(grade===5){ sMin=s5; nextBound=s5+Math.max(2,Math.floor(0.1*s5)); target=sampleSkewed(s5,nextBound); }
+      else if(grade===4){ sMin=s4; nextBound=s5||(s4+999999); target=sampleSkewed(s4,nextBound); }
+      else if(grade===3){ sMin=s3; nextBound=s4||(s3+999999); target=sampleSkewed(s3,nextBound); }
+      else { const hi=Math.max(0,s3-1); const lo=Math.max(0,Math.floor(s3-0.3*s3)); const mean=Math.floor(hi-(hi-lo)*0.2); const sd=(hi-lo)/6||1; sMin=-Infinity; nextBound=s3; target=Math.min(sampleTruncNormal(lo,hi,mean,sd),hi); }
 
-    const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
-    let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
-    if(names.includes(null)){ alert('Немає даних для Підтягування/КСВ у шкалах'); return; }
-    for(const n of names){ if(!scales[n]){ alert('Немає шкали для: '+n); return; } }
+      const scales=(sex==='M'?state.scales.M:state.scales.J)||{};
+      let names=picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
+      if(names.includes(null)) return null;
+      for(const n of names){ if(!scales[n]) return null; }
 
-    const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
-    const meanPts=Math.floor(target/3);
-    const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
-    const loPts=Math.max(minPer,Math.floor(meanPts-devMax));
-    const hiPts=Math.floor(meanPts+devMax);
+      const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
+      const meanPts=Math.floor(target/3);
+      const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
+      const loPts=Math.max(minPer,Math.floor(meanPts-devMax));
+      const hiPts=Math.floor(meanPts+devMax);
 
-    const asRes = (n,pts) => {
-      const s=scales[n]; if(!s) return null;
-      const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
-      const nextBase = s.map[pts+1];
-      if(nextBase){
-        const betterIsLower = isLowerBetter(n, s.unit);
-        if(/км/i.test(n) || /хв/i.test(s.unit)){
-          const a=parseMinSec_csv(base).total, b=parseMinSec_csv(String(nextBase)).total; const lo = betterIsLower ? b : a; const hi = betterIsLower ? a : b; if(hi>lo) return toMinSec_csv(Math.floor(Math.random()*(hi-lo))+lo);
-        } else if(isHundred(n)){
-          const a=parseFloat(String(base).replace(',','.')), b=parseFloat(String(nextBase).replace(',','.')); let from,to; if(betterIsLower){from=b;to=a;} else {from=a;to=b;} if(to>from){ const step=0.1; const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step); if(kTo>=kFrom){ const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom; return asComma(k*step,1);} }
-        } else if(isMedball(n)){
-          const a=parseFloat(String(base).replace(',','.')), b=parseFloat(String(nextBase).replace(',','.')); let from,to; if(betterIsLower){from=b;to=a;} else {from=a;to=b;} if(to>from){ const step=0.05; const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step); if(kTo>=kFrom){ const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom; return asComma(k*step,2);} }
-        } else if(isEndurance(n) || (isMeters(s.unit) && !isMedball(n) && !isHundred(n)) || isReps(s.unit)){
-          const a=parseInt(base,10), b=parseInt(String(nextBase),10); const lo = betterIsLower ? (b+1) : a, hi = betterIsLower ? a : (b-1); if(hi>=lo) return String(Math.floor(Math.random()*(hi-lo+1))+lo);
+      const asRes = (n,pts) => {
+        const s=scales[n]; if(!s) return null;
+        const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
+        return variedResult(n,s.unit,pts,s.map);
+      };
+
+      function canInc(toSet, idx, val){ return (val<hiPts) && toSet[idx].includes(val+1); }
+
+      let solution=null;
+      for(let tries=0; tries<25000 && !solution; tries++){
+        const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
+        const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
+        if(!c1.length||!c2.length) break;
+        let v1=c1[Math.floor(Math.random()*(c1.length))];
+        let v2=c2[Math.floor(Math.random()*(c2.length))];
+        let v3=target-v1-v2;
+        if(v3>hiPts) v3=hiPts;
+        if(v3<loPts) continue;
+        if(!allowed[2].includes(v3)) continue;
+
+        let sum=v1+v2+v3;
+
+        if(sum>=nextBound){
+          let over=sum-(nextBound-1);
+          while(over>0){
+            let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3));
+            if(idx==0 && v1>loPts){ v1--; over--; }
+            else if(idx==1 && v2>loPts){ v2--; over--; }
+            else if(idx==2 && v3>loPts){ v3--; over--; }
+            else break;
+          }
+          sum=v1+v2+v3; if(sum>=nextBound) continue;
         }
-      }
-      return base;
-    };
 
-    function canInc(toSet, idx, val){ return (val<hiPts) && toSet[idx].includes(val+1); }
-
-    let solution=null;
-    for(let tries=0; tries<25000 && !solution; tries++){
-      const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
-      const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
-      if(!c1.length||!c2.length) break;
-      let v1=c1[Math.floor(Math.random()*c1.length)];
-      let v2=c2[Math.floor(Math.random()*(c2.length))];
-      let v3=target-v1-v2;
-      if(v3>hiPts) v3=hiPts;
-      if(v3<loPts) continue;
-      if(!allowed[2].includes(v3)) continue;
-
-      let sum=v1+v2+v3;
-
-      if(sum>=nextBound){
-        let over = sum-(nextBound-1);
-        while(over>0){
-          let arr=[v1,v2,v3]; let idx=arr.indexOf(Math.max(...arr));
-          if(idx==0 && v1>loPts){ v1--; over--; }
-          else if(idx==1 && v2>loPts){ v2--; over--; }
-          else if(idx==2 && v3>loPts){ v3--; over--; }
-          else break;
-        }
-        sum=v1+v2+v3; if(sum>=nextBound) continue;
-      }
-
-      if(grade===2){
-        const lo2 = Math.max(0, Math.floor(s3 - 0.3*s3));
-        if(sum>=s3){
-          let need = sum-(s3-1);
-          while(need>0){ let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3)); if(idx==0 && v1>loPts){ v1--; need--; } else if(idx==1 && v2>loPts){ v2--; need--; } else if(idx==2 && v3>loPts){ v3--; need--; } else break; }
-          sum=v1+v2+v3; if(sum>=s3) continue;
-        }
-        if(sum<lo2){
-          let need = lo2 - sum;
-          while(need>0){ let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3)); if(idx==0 && canInc(allowed,0,v1)){ v1++; need--; } else if(idx==1 && canInc(allowed,1,v2)){ v2++; need--; } else if(idx==2 && canInc(allowed,2,v3)){ v3++; need--; } else break; }
-          sum=v1+v2+v3; if(sum<lo2) continue;
-        }
-      } else {
-        if(sum<sMin){
+        if(grade===2){
+          const lo2=Math.max(0,Math.floor(s3-0.3*s3));
+          if(sum>=s3){
+            let need=sum-(s3-1);
+            while(need>0){
+              let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3));
+              if(idx==0 && v1>loPts){ v1--; need--; }
+              else if(idx==1 && v2>loPts){ v2--; need--; }
+              else if(idx==2 && v3>loPts){ v3--; need--; }
+              else break;
+            }
+            sum=v1+v2+v3; if(sum>=s3) continue;
+          }
+          if(sum<lo2){
+            let need=lo2-sum;
+            while(need>0){
+              let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3));
+              if(idx==0 && canInc(allowed,0,v1)){ v1++; need--; }
+              else if(idx==1 && canInc(allowed,1,v2)){ v2++; need--; }
+              else if(idx==2 && canInc(allowed,2,v3)){ v3++; need--; }
+              else break;
+            }
+            sum=v1+v2+v3; if(sum<lo2) continue;
+          }
+        } else if(sum<sMin){
           let need = sMin - sum;
           for(let guard=0; guard<1000 && need>0; guard++){
             let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3));
@@ -505,28 +538,30 @@ function generate(){
           }
           sum=v1+v2+v3; if(sum<sMin || sum>=nextBound) continue;
         }
+
+        const r1=asRes(names[0],v1), r2=asRes(names[1],v2), r3=asRes(names[2],v3);
+        if(!r1||!r2||!r3) continue;
+        solution=[
+          {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
+          {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
+          {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
+        ];
       }
+      return solution;
+    };
 
-      const r1=asRes(names[0],v1), r2=asRes(names[1],v2), r3=asRes(names[2],v3);
-      if(!r1||!r2||!r3) continue;
-      solution=[
-        {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
-        {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
-        {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
-      ];
-    }
-
-    if(!solution){ alert('Не вдалося згенерувати під обмеження. Спробуй ще раз або вибери інші вправи.'); return; }
+    let solution=null; for(let cycles=0; cycles<12 && !solution; cycles++){ solution = attemptOnce(); }
+    if(!solution){ return; }
 
     tbody.innerHTML='';
     solution.forEach(r=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td class=\"idcell\"><span class=\"idpill\">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+      tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
       tbody.appendChild(tr);
     });
     const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
     document.getElementById('sum').textContent=Math.floor(total);
-  }catch(e){ showErr('GEN ERROR: '+(e&&e.message?e.message:String(e))); }
+  }catch(e){ /* тихо */ }
 }
 
 document.getElementById('genBtn').addEventListener('click',generate);
