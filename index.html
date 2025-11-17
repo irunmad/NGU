@@ -53,7 +53,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r32</div>
+    <div class="chip">Генератор оцінки · r33</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -125,12 +125,13 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r32';
+const VER='r33';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
+function log(msg){ try{ console.log('[NGU]', msg); }catch(e){} }
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
 const stripQuotes = s => String(s??'').replace(/^\s*["'«»]+|["'«»]+\s*$/g,'').trim();
 const onlyInt = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
@@ -263,11 +264,13 @@ async function loadAll(){
     state.ready = true;
     const mCount=Object.keys(state.scales.M||{}).length, wCount=Object.keys(state.scales.J||{}).length;
     dataState.textContent = `OK: М(${mCount}) Ж(${wCount})`;
+    log({loaded:{M:mCount,W:wCount}, thrM:state.thresholds.M.length, thrW:state.thresholds.J.length});
     computeChoices();
     renderPicked();
     buildCards();
     document.getElementById('genBtn').disabled=false;
     document.getElementById('loadBox').style.display='none';
+    log('Data ready; gen enabled');
   }catch(e){
     dataState.textContent='Помилка: '+e.message;
     console.error(e);
@@ -432,15 +435,14 @@ function choosePullOrKsv(scales){
 /* ===== активная строка порогов ===== */
 function activeThreshold(){
   const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
+  log({sex,category,ageGroup,thrCount:list?list.length:0});
   if(!list || !list.length) return null;
   const need=(category==='3'?'3,4':'2');
-  return list.find(r=> String(r.category).replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,',')===need 
-                      && parseInt(r.age_group,10)===ageGroup) || null;
+  return list.find(r=> { const cat=String(r.category).replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','); return (cat===need) && parseInt(r.age_group,10)===ageGroup; }) || null;
 }
 
 /* ===== распределения ===== */
 function sampleSkewed(minSum, nextSumExclusive){
-  // строго < nextSumExclusive
   const maxHi = nextSumExclusive-1;
   if(maxHi<minSum) return minSum;
   const x = Math.max(1, nextSumExclusive - minSum);
@@ -464,16 +466,19 @@ function sampleTruncNormal(a,b,mean,sd){
 }
 
 /* ===== генерация ===== */
-function generateOnce(){
-  const th=activeThreshold();
-  if(!th) return null;
+function generate(){
+  if(!state.ready){ alert('Дані ще завантажуються'); return; }
+  if(!picked || picked.length!==3){ alert('Оберіть рівно 3 вправи'); return; }
+  const t = activeThreshold();
+  if(!t){ alert('Пороги не знайдені для вибраних параметрів (стать/категорія/вікова група). Перевір CSV заголовки.'); return; }
+
+  const th=t;
   const minPer=onlyInt(th.min_per_exercise);
   const s3=onlyInt(th.sum_for_grade_3), s4=onlyInt(th.sum_for_grade_4), s5=onlyInt(th.sum_for_grade_5);
 
-  // целевой суммарный бал
   let target, nextBound;
   if(grade===5){
-    nextBound = s5 + Math.max(2, Math.floor(0.1*s5)); // искусственный верх
+    nextBound = s5 + Math.max(2, Math.floor(0.1*s5));
     target = sampleSkewed(s5, nextBound);
   } else if(grade===4){
     nextBound = s5 || (s4+999999);
@@ -482,9 +487,8 @@ function generateOnce(){
     nextBound = s4 || (s3+999999);
     target = sampleSkewed(s3, nextBound);
   } else {
-    // 2: строго ниже 3
     const hi = Math.max(0, s3-1);
-    const lo = Math.max(0, Math.floor(s3*0.7)); // S3 - 30%*S3
+    const lo = Math.max(0, Math.floor(s3*0.7));
     const mean = Math.floor(hi - (hi-lo)*0.2);
     const sd = (hi-lo)/6 || 1;
     nextBound = s3;
@@ -493,10 +497,9 @@ function generateOnce(){
 
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
   let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
-  if(names.includes(null)) return null;
-  for(const n of names){ if(!scales[n]) return null; }
+  if(names.includes(null)){ alert('Немає даних для Підтягування/КСВ у шкалах'); return; }
+  for(const n of names){ if(!scales[n]){ alert('Немає шкали для: '+n); return; } }
 
-  // допустимые по баллам
   const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
   const meanPts=Math.floor(target/3);
   const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
@@ -510,18 +513,18 @@ function generateOnce(){
     return v||base;
   };
 
-  for(let tries=0; tries<20000; tries++){
+  let solution=null;
+  for(let tries=0; tries<20000 && !solution; tries++){
     const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
     const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
     if(!c1.length||!c2.length) break;
     const v1=c1[Math.floor(Math.random()*c1.length)];
-    const v2=c2[Math.floor(Math.random()*(c2.length))];
+    const v2=c2[Math.floor(Math.random()*c2.length)];
     let v3=target-v1-v2;
     if(v3>hiPts) v3=hiPts;
     if(v3<loPts) continue;
     if(!allowed[2].includes(v3)) continue;
 
-    // жёсткий потолок по сумме: < nextBound
     let sum=v1+v2+v3;
     if(sum>=nextBound){
       let over = sum-(nextBound-1);
@@ -539,28 +542,23 @@ function generateOnce(){
 
     const r1=resFor(names[0],v1), r2=resFor(names[1],v2), r3=resFor(names[2],v3);
     if(!r1||!r2||!r3) continue;
-    return [
+    solution=[
       {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
       {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
       {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
     ];
   }
-  return null;
-}
-function generate(){
-  if(!state.ready){ return; }
-  let solution=null;
-  for(let attempt=0; attempt<120 && !solution; attempt++){ solution = generateOnce(); }
-  if(solution){ 
-    tbody.innerHTML='';
-    solution.forEach(r=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
-      tbody.appendChild(tr);
-    });
-    const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
-    sumEl.textContent=Math.floor(total);
-  }
+
+  if(!solution){ alert('Не вдалося згенерувати під обмеження. Спробуй ще раз або вибери інші вправи.'); return; }
+
+  tbody.innerHTML='';
+  solution.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tbody.appendChild(tr);
+  });
+  const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+  document.getElementById('sum').textContent=Math.floor(total);
 }
 
 document.getElementById('genBtn').addEventListener('click',generate);
