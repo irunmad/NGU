@@ -53,7 +53,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r36</div>
+    <div class="chip">Генератор оцінки · r37</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -125,7 +125,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r36';
+const VER='r37';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -182,7 +182,7 @@ async function loadScales(url){
   return byName;
 }
 
-/* === THRESHOLDS strict: Стать, Група, Категорія, Пороговий мінімум, 3,4,5 === */
+/* === THRESHOLDS strict === */
 function toSex(s){ s=(s||'').toLowerCase(); if(s.startsWith('чоло')) return 'M'; if(s.startsWith('жі')) return 'J'; return s.toUpperCase(); }
 async function loadThresholds(url){
   const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
@@ -210,7 +210,7 @@ async function loadThresholds(url){
   return out;
 }
 
-/* === choices (exercise names from scales) === */
+/* === choices === */
 function computeChoices(){
   const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
   const names = Object.keys(scales);
@@ -403,7 +403,7 @@ function choosePullOrKsv(scales){
   return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
 }
 
-/* === active threshold row (by sex, category, ageGroup) === */
+/* === active threshold row === */
 function activeThreshold(){
   const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
   if(!list || !list.length) return null;
@@ -444,17 +444,21 @@ function generate(){
   const minPer=onlyInt(t.min_per_exercise);
   const s3=onlyInt(t.sum_for_grade_3), s4=onlyInt(t.sum_for_grade_4), s5=onlyInt(t.sum_for_grade_5);
 
-  let target, nextBound;
+  let target, nextBound, sMin;
   if(grade===5){
+    sMin = s5;
     nextBound = s5 + Math.max(2, Math.floor(0.1*s5));
     target = sampleSkewed(s5, nextBound);
   } else if(grade===4){
+    sMin = s4;
     nextBound = s5 || (s4+999999);
     target = sampleSkewed(s4, nextBound);
   } else if(grade===3){
+    sMin = s3;
     nextBound = s4 || (s3+999999);
     target = sampleSkewed(s3, nextBound);
   } else {
+    sMin = -Infinity; // для 2 нижняя граница по диапазону будет отдельно
     const hi = Math.max(0, s3-1);
     const lo = Math.max(0, Math.floor(s3*0.7));
     const mean = Math.floor(hi - (hi-lo)*0.2);
@@ -477,7 +481,6 @@ function generate(){
   const asRes = (n,pts) => {
     const s=scales[n]; if(!s) return null;
     const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
-    // vary within band
     const nextBase = s.map[pts+1];
     if(nextBase){
       const betterIsLower = isLowerBetter(n, s.unit);
@@ -503,39 +506,90 @@ function generate(){
     return base;
   };
 
+  function canInc(toSet, idx, val){
+    return (val<hiPts) && toSet[idx].includes(val+1);
+  }
+
   let solution=null;
-  for(let tries=0; tries<20000 && !solution; tries++){
+  for(let tries=0; tries<25000 && !solution; tries++){
     const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
     const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
     if(!c1.length||!c2.length) break;
-    const v1=c1[Math.floor(Math.random()*c1.length)];
-    const v2=c2[Math.floor(Math.random()*c2.length)];
+    let v1=c1[Math.floor(Math.random()*c1.length)];
+    let v2=c2[Math.floor(Math.random()*(c2.length))];
     let v3=target-v1-v2;
     if(v3>hiPts) v3=hiPts;
     if(v3<loPts) continue;
     if(!allowed[2].includes(v3)) continue;
 
     let sum=v1+v2+v3;
+
+    // forbid crossing to next grade
     if(sum>=nextBound){
       let over = sum-(nextBound-1);
       while(over>0){
         let arr=[v1,v2,v3];
         let idx=arr.indexOf(Math.max(...arr));
-        if(idx===0 && v1>loPts){ v1--; over--; }
-        else if(idx===1 && v2>loPts){ v2--; over--; }
-        else if(idx===2 && v3>loPts){ v3--; over--; }
+        if(idx==0 && v1>loPts){ v1--; over--; }
+        else if(idx==1 && v2>loPts){ v2--; over--; }
+        else if(idx==2 && v3>loPts){ v3--; over--; }
         else break;
       }
       sum=v1+v2+v3;
       if(sum>=nextBound) continue;
     }
 
+    // enforce lower bound for grade 3/4/5; for grade 2 ensure sum < s3 and >= floor(0.7*s3)
+    if(grade===2){
+      const lo2 = Math.max(0, Math.floor(s3*0.7));
+      if(sum>=s3){ // too high, reduce if possible
+        let need = sum-(s3-1);
+        while(need>0){
+          let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3));
+          if(idx==0 && v1>loPts){ v1--; need--; }
+          else if(idx==1 && v2>loPts){ v2--; need--; }
+          else if(idx==2 && v3>loPts){ v3--; need--; }
+          else break;
+        }
+        sum=v1+v2+v3;
+        if(sum>=s3) continue;
+      }
+      if(sum<lo2){
+        let need = lo2 - sum;
+        // try to increase values staying within hiPts and allowed
+        while(need>0){
+          let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3));
+          if(idx==0 && canInc(allowed,0,v1)){ v1++; need--; }
+          else if(idx==1 && canInc(allowed,1,v2)){ v2++; need--; }
+          else if(idx==2 && canInc(allowed,2,v3)){ v3++; need--; }
+          else break;
+        }
+        sum=v1+v2+v3;
+        if(sum<lo2) continue;
+      }
+    } else {
+      if(sum<sMin){
+        let need = sMin - sum;
+        // try to increase values up to hiPts where allowed
+        for(let guard=0; guard<1000 && need>0; guard++){
+          // choose smallest component to increase
+          let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3));
+          if(idx==0 && canInc(allowed,0,v1)){ v1++; need--; }
+          else if(idx==1 && canInc(allowed,1,v2)){ v2++; need--; }
+          else if(idx==2 && canInc(allowed,2,v3)){ v3++; need--; }
+          else break;
+        }
+        sum=v1+v2+v3;
+        if(sum<sMin || sum>=nextBound) continue;
+      }
+    }
+
     const r1=asRes(names[0],v1), r2=asRes(names[1],v2), r3=asRes(names[2],v3);
     if(!r1||!r2||!r3) continue;
     solution=[
       {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
-      {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
-      {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
+      {name:names[1], displayName:names[1], points=v2, result:r2, badge:(scales[names[1]].id||'—')},
+      {name:names[2], displayName:names[2], points=v3, result:r3, badge:(scales[names[2]].id||'—')},
     ];
   }
 
