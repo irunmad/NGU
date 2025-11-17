@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Генератор · r43</title>
+<title>Генератор · r44</title>
 <style>
 :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
 *{box-sizing:border-box}
@@ -54,7 +54,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">r43</div>
+    <div class="chip">r44</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -128,7 +128,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r43';
+const VER='r44';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -355,29 +355,18 @@ function variedResult(name, unit, pts, map){
   const baseRaw = String(map[pts] ?? '').trim();
   if(!baseRaw) return null;
 
-  const betterIsLower = isLowerBetter(name, unit);
-  const neighBetter = map[pts+1];     // «лучший» сосед для нашей сетки баллов
   const base = String(baseRaw);
-
-  // утилиты
   const asFloat = s => parseFloat(String(s).replace(',', '.'));
   const asComma = (x,d) => x.toFixed(d).replace('.', ',');
   const secFromCsv = s => { const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return (m||0)*60+(sec||0); };
   const csvFromSec = t => { t=Math.max(0,Math.floor(t)); const m=Math.floor(t/60), s=t%60; return `${m},${String(s).padStart(2,'0')}`; };
-  const varyDiscrete = (lo,hi,step,decimals) => {
-    if(hi<=lo) return base;
-    const kFrom=Math.ceil((lo+1e-9)/step), kTo=Math.floor((hi-1e-9)/step);
-    if(kTo<kFrom) return base;
-    const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom;
-    return asComma(k*step,decimals);
-  };
 
-  // 1 км (хв, с)
+  // 1 км (хв, с) — секунды, без десятых
   if (/км/i.test(name) || /хв/i.test(unit)){
     const a = secFromCsv(base);
-    const b = neighBetter ? secFromCsv(neighBetter) : null;
-    if (b !== null){
-      const lo = Math.min(a,b), hi = Math.max(a,b);
+    const nb = map[pts+1] ? secFromCsv(map[pts+1]) : null;
+    if (nb !== null){
+      const lo = Math.min(a,nb), hi = Math.max(a,nb);
       return csvFromSec(Math.floor(Math.random()*(hi-lo))+lo);
     }
     return base;
@@ -386,23 +375,35 @@ function variedResult(name, unit, pts, map){
   // 100 м — десятые
   if (isHundred(name)){
     const a = asFloat(base);
-    const b = neighBetter ? asFloat(neighBetter) : NaN;
-    if (!Number.isNaN(b)) return varyDiscrete(Math.min(a,b), Math.max(a,b), 0.1, 1);
+    const b = map[pts+1] ? asFloat(map[pts+1]) : NaN;
+    if (!Number.isNaN(b)){
+      const lo=Math.min(a,b), hi=Math.max(a,b);
+      const step=0.1, kFrom=Math.ceil((lo+1e-9)/step), kTo=Math.floor((hi-1e-9)/step);
+      const k=Math.max(kFrom, Math.min(kTo, Math.floor(Math.random()*(kTo-kFrom+1))+kFrom));
+      return asComma(k*step,1);
+    }
     return asComma(a,1);
   }
 
-  // Медбол — 0.05 м для всех (М/Ж)
+  // Медбол — всегда варьируем вверх в пределах балла, шаг 0.05 м
   if (isMedball(name)){
     const a = asFloat(base);
-    const b = neighBetter ? asFloat(neighBetter) : NaN;
-    if (!Number.isNaN(b)) return varyDiscrete(Math.min(a,b), Math.max(a,b), 0.05, 2);
-    return asComma(a,2);
+    const hasNext = !!map[pts+1];
+    const upper = hasNext ? asFloat(map[pts+1]) : (a+0.45); // мягкий верх, если соседа нет
+    const lo = Math.min(a,upper), hi = Math.max(a,upper);
+    if (hi<=lo) return asComma(a,2);
+    const step=0.05;
+    const kFrom=Math.ceil((lo+1e-9)/step), kTo=Math.floor(((hi-1e-9))/step);
+    if(kTo<kFrom) return asComma(a,2);
+    const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom;
+    const val = k*step;
+    return asComma(val,2);
   }
 
-  // Витривалість и «метры/разы» — целые
+  // Витривалість и «метры/разы» — строго целые числа
   if (isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name)) || isReps(unit)){
     const a = parseInt(base,10);
-    const b = neighBetter ? parseInt(String(neighBetter),10) : NaN;
+    const b = map[pts+1] ? parseInt(String(map[pts+1]),10) : NaN;
     if (!Number.isNaN(b)){
       const lo = Math.min(a,b), hi = Math.max(a,b);
       if (hi>lo) return String(Math.floor(Math.random()*(hi-lo))+lo);
