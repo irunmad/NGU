@@ -53,7 +53,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r35</div>
+    <div class="chip">Генератор оцінки · r36</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -125,13 +125,12 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r35';
+const VER='r36';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
-const strip = s => String(s??'').trim();
 const stripQuotes = s => String(s??'').replace(/^\s*["'«»]+|["'«»]+\s*$/g,'').trim();
 const onlyInt = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
 const asComma = (x,d)=>x.toFixed(d).replace('.',',');
@@ -164,5 +163,396 @@ async function loadScales(url){
   if(!lines.length) return {};
   const delim=pickDelim(lines[0]);
   const rows=lines.map(l=>parseCSVLine(l,delim));
-  const H = Object.fromEntries(rows[0].map((h,i)=>[h,i]));
-  /* placeholder */
+  const headers=rows[0];
+  const H = Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const iID = ('№' in H? H['№'] : -1);
+  const iName=H['Назва'], iUnit=H['Одиниця'], iPts=H['Бал'], iRes=H['Результат'];
+  if([iName,iUnit,iPts,iRes].some(x=>x==null)) throw new Error('Очікувані колонки у шкалі: №(опц.), Назва, Одиниця, Бал, Результат');
+  const byName={};
+  for(const r of rows.slice(1)){
+    const name=stripQuotes(r[iName]||''); if(!name) continue;
+    const unit=stripQuotes(r[iUnit]||'');
+    const pts =parseInt(String(r[iPts]||'').replace(/\s/g,''),10);
+    const res =stripQuotes(r[iRes]||'');
+    const id  =iID>=0? stripQuotes(r[iID]||'') : '—';
+    if(!Number.isFinite(pts)||!res) continue;
+    if(!byName[name]) byName[name]={id,unit,map:{}};
+    byName[name].map[pts]=res;
+  }
+  return byName;
+}
+
+/* === THRESHOLDS strict: Стать, Група, Категорія, Пороговий мінімум, 3,4,5 === */
+function toSex(s){ s=(s||'').toLowerCase(); if(s.startsWith('чоло')) return 'M'; if(s.startsWith('жі')) return 'J'; return s.toUpperCase(); }
+async function loadThresholds(url){
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  if(!lines.length) return [];
+  const delim=pickDelim(lines[0]);
+  const rows=lines.map(l=>parseCSVLine(l,delim));
+  const headers=rows[0];
+  const H=Object.fromEntries(headers.map((h,i)=>[h,i]));
+  const need=['Стать','Група','Категорія','Пороговий мінімум','3','4','5'];
+  for(const k of need){ if(!(k in H)) throw new Error('Відсутня колонка: '+k); }
+  const iS=H['Стать'], iG=H['Група'], iC=H['Категорія'], iMin=H['Пороговий мінімум'], i3=H['3'], i4=H['4'], i5=H['5'];
+  const out=[];
+  for(const r of rows.slice(1)){
+    out.push({
+      sex: toSex(r[iS]||''),
+      age_group: String(r[iG]||'').trim(),
+      category: String(r[iC]||'').trim(),
+      min_per_exercise: r[iMin]||'',
+      sum_for_grade_3: r[i3]||'',
+      sum_for_grade_4: r[i4]||'',
+      sum_for_grade_5: r[i5]||'',
+    });
+  }
+  return out;
+}
+
+/* === choices (exercise names from scales) === */
+function computeChoices(){
+  const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
+  const names = Object.keys(scales);
+  state.choices = names;
+  const med   = names.find(n=>/медбол/i.test(n));
+  const func  = names.find(n=>/витривал/i.test(n));
+  const pull  = names.find(n=>/підтяг|подтяг/i.test(n));
+  const ksv   = names.find(n=>/комплексн.*силов/i.test(n));
+  const first = med || names[0] || '—';
+  const second= func || names.find(n=>n!==first) || first;
+  picked = [ first, (pull||ksv)? GROUPED : (pull||ksv), second ].filter(Boolean).slice(0,3);
+}
+
+/* === load all === */
+async function loadAll(){
+  const dataState=document.getElementById('dataState');
+  try{
+    const [thM, thW, scM, scW] = await Promise.allSettled([
+      loadThresholds('./data/thresholds_men.csv'),
+      loadThresholds('./data/thresholds_women.csv'),
+      loadScales('./data/scales_men.csv'),
+      loadScales('./data/scales_women.csv'),
+    ]);
+    state.thresholds.M = thM.status==='fulfilled' ? thM.value : [];
+    state.thresholds.J = thW.status==='fulfilled' ? thW.value : [];
+    state.scales.M = scM.status==='fulfilled' ? scM.value : {};
+    state.scales.J = scW.status==='fulfilled' ? scW.value : {};
+    state.ready = true;
+    const mCount=Object.keys(state.scales.M||{}).length, wCount=Object.keys(state.scales.J||{}).length;
+    dataState.textContent = `OK: М(${mCount}) Ж(${wCount})`;
+    computeChoices(); renderPicked(); buildCards();
+    document.getElementById('genBtn').disabled=false;
+    document.getElementById('loadBox').style.display='none';
+  }catch(e){
+    dataState.textContent='Помилка: '+e.message;
+    console.error(e);
+  }
+}
+
+/* === UI === */
+const ageGrid = document.getElementById('ageGrid');
+for(let g=1;g<=7;g++){
+  const lab=document.createElement('label'); lab.className='inline';
+  const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);});
+  lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
+}
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;}));
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value; computeChoices(); renderPicked(); buildCards(); }));
+document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}))
+
+const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
+function renderPicked(){
+  const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
+  const rows = picked.map(n=>{
+    if(n===GROUPED) return {name:GROUPED, displayName:'Підтягування / КСВ', result:'—',points:'—',badge:'2/14'};
+    const info = scales[n];
+    const badge = info? String(info.id||'—') : '—';
+    return {name:n, displayName:n, result:'—',points:'—',badge};
+  });
+  tbody.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* === modal === */
+const modalBack=document.getElementById('modalBack');
+const editBtn=document.getElementById('editBtn');
+const closeModal=document.getElementById('closeModal');
+const applySel=document.getElementById('applySel');
+const cardList=document.getElementById('cardList');
+const selCount=document.getElementById('selCount');
+
+function buildCards(){
+  cardList.innerHTML='';
+  let temp=[...picked];
+  const all = state.choices || [];
+  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || /комплексн.*силов/i.test(n)));
+
+  const hasPull = all.some(n=>/підтяг|подтяг/i.test(n));
+  const hasKsv  = all.some(n=>/комплексн.*силов/i.test(n));
+  if(hasPull||hasKsv){
+    const div=document.createElement('div');
+    div.className='card'+(temp.includes(GROUPED)?' sel':'');
+    div.textContent='Підтягування / КСВ';
+    div.addEventListener('click',()=>{
+      const i=temp.indexOf(GROUPED);
+      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(GROUPED); }
+      picked=[...temp]; buildCards();
+    });
+    cardList.appendChild(div);
+  }
+  names.forEach(name=>{
+    const div=document.createElement('div');
+    div.className='card'+(temp.includes(name)?' sel':'');
+    div.textContent = name;
+    div.addEventListener('click',()=>{
+      const i=temp.indexOf(name);
+      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(name); }
+      picked=[...temp]; buildCards();
+    });
+    cardList.appendChild(div);
+  });
+  selCount.textContent=`Обрано: ${picked.length}/3`;
+  applySel.disabled=(picked.length!==3);
+}
+editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
+closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
+applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
+
+/* === helpers === */
+function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
+function isReps(unit){ return /раз|рази/i.test(unit); }
+function isHundred(name){ return /100\s*м/i.test(name); }
+function isMedball(name){ return /медбол/i.test(name); }
+function isEndurance(name){ return /витривал/i.test(name); }
+function isMeters(unit){ return /\bм\b/i.test(unit); }
+function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
+function toMinSec_csv(total){ total=Math.max(0,Math.floor(total)); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
+
+/* === vary result within same point band === */
+function variedResult(name, unit, pts, map){
+  const base = stripQuotes(map[pts]);
+  if(!base) return null;
+  const next = map[pts+1];
+  if(!next) return base;
+  const betterIsLower = isLowerBetter(name, unit);
+
+  if(/км/i.test(name) || /хв/i.test(unit)){
+    const a=parseMinSec_csv(base).total, b=parseMinSec_csv(String(next)).total;
+    const lo = betterIsLower ? b : a;
+    const hi = betterIsLower ? a : b;
+    if(hi<=lo) return base;
+    return toMinSec_csv(Math.floor(Math.random()*(hi-lo))+lo);
+  }
+  if(isHundred(name)){
+    const a = parseFloat(String(base).replace(',','.'));
+    const b = parseFloat(String(next).replace(',','.'));
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    let from,to;
+    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+    if(to<=from) return base;
+    const step=0.1;
+    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom;
+    return asComma(k*step,1);
+  }
+  if(isMedball(name)){
+    const a = parseFloat(String(base).replace(',','.'));
+    const b = parseFloat(String(next).replace(',','.'));
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    let from,to;
+    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+    if(to<=from) return base;
+    const step=0.05;
+    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom;
+    return asComma(k*step,2);
+  }
+  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
+    const a=parseInt(base,10), b=parseInt(String(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo = betterIsLower ? (b+1) : a;
+    const hi = betterIsLower ? a : (b-1);
+    if(hi<lo) return base;
+    return String(Math.floor(Math.random()*(hi-lo+1))+lo);
+  }
+  if(isReps(unit)){
+    const a=parseInt(base,10), b=parseInt(String(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo = betterIsLower ? (b+1) : a;
+    const hi = betterIsLower ? a : (b-1);
+    if(hi<lo) return base;
+    return String(Math.floor(Math.random()*(hi-lo+1))+lo);
+  }
+  return base;
+}
+
+/* === choose pull/ksv === */
+function choosePullOrKsv(scales){
+  const names = Object.keys(scales);
+  const pull = names.find(n=>/підтяг|подтяг/i.test(n));
+  const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
+  if(!pull && !ksv) return null;
+  return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
+}
+
+/* === active threshold row (by sex, category, ageGroup) === */
+function activeThreshold(){
+  const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
+  if(!list || !list.length) return null;
+  return list.find(r=> String(r.category)===String(category) && parseInt(r.age_group,10)===ageGroup) || null;
+}
+
+/* === distributions === */
+function sampleSkewed(minSum, nextSumExclusive){
+  const maxHi = nextSumExclusive-1;
+  if(maxHi<minSum) return minSum;
+  const x = Math.max(1, nextSumExclusive - minSum);
+  const r = Math.random();
+  let lo=minSum, hi=Math.floor(minSum+0.3*x)-1;
+  if(r>=0.8 && r<0.95){ lo=Math.floor(minSum+0.3*x); hi=Math.floor(minSum+0.5*x)-1; }
+  else if(r>=0.95){    lo=Math.floor(minSum+0.5*x); hi=Math.floor(minSum+0.7*x)-1; }
+  hi = Math.min(hi, maxHi);
+  lo = Math.min(lo, hi);
+  return Math.floor(Math.random()*(hi-lo+1))+lo;
+}
+function randn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function sampleTruncNormal(a,b,mean,sd){
+  a=Math.ceil(a); b=Math.floor(b);
+  if(b<a) return a;
+  for(let i=0;i<24;i++){
+    const x = Math.floor(mean + sd*randn());
+    if(x>=a && x<=b) return x;
+  }
+  return Math.floor(Math.random()*(b-a+1))+a;
+}
+
+/* === generate === */
+function generate(){
+  if(!state.ready){ alert('Дані ще завантажуються'); return; }
+  if(!picked || picked.length!==3){ alert('Оберіть рівно 3 вправи'); return; }
+  const t = activeThreshold();
+  if(!t){ alert('Пороги не знайдені для вибраних параметрів (стать/категорія/вікова група).'); return; }
+
+  const minPer=onlyInt(t.min_per_exercise);
+  const s3=onlyInt(t.sum_for_grade_3), s4=onlyInt(t.sum_for_grade_4), s5=onlyInt(t.sum_for_grade_5);
+
+  let target, nextBound;
+  if(grade===5){
+    nextBound = s5 + Math.max(2, Math.floor(0.1*s5));
+    target = sampleSkewed(s5, nextBound);
+  } else if(grade===4){
+    nextBound = s5 || (s4+999999);
+    target = sampleSkewed(s4, nextBound);
+  } else if(grade===3){
+    nextBound = s4 || (s3+999999);
+    target = sampleSkewed(s3, nextBound);
+  } else {
+    const hi = Math.max(0, s3-1);
+    const lo = Math.max(0, Math.floor(s3*0.7));
+    const mean = Math.floor(hi - (hi-lo)*0.2);
+    const sd = (hi-lo)/6 || 1;
+    nextBound = s3;
+    target = Math.min(sampleTruncNormal(lo, hi, mean, sd), hi);
+  }
+
+  const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
+  let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
+  if(names.includes(null)){ alert('Немає даних для Підтягування/КСВ у шкалах'); return; }
+  for(const n of names){ if(!scales[n]){ alert('Немає шкали для: '+n); return; } }
+
+  const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
+  const meanPts=Math.floor(target/3);
+  const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
+  const loPts=Math.max(minPer,Math.floor(meanPts-devMax));
+  const hiPts=Math.floor(meanPts+devMax);
+
+  const asRes = (n,pts) => {
+    const s=scales[n]; if(!s) return null;
+    const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
+    // vary within band
+    const nextBase = s.map[pts+1];
+    if(nextBase){
+      const betterIsLower = isLowerBetter(n, s.unit);
+      if(/км/i.test(n) || /хв/i.test(s.unit)){
+        const a=parseMinSec_csv(base).total, b=parseMinSec_csv(String(nextBase)).total;
+        const lo = betterIsLower ? b : a;
+        const hi = betterIsLower ? a : b;
+        if(hi>lo) return toMinSec_csv(Math.floor(Math.random()*(hi-lo))+lo);
+      } else if(isHundred(n)){
+        const a=parseFloat(String(base).replace(',','.')), b=parseFloat(String(nextBase).replace(',','.'));
+        let from,to; if(betterIsLower){from=b;to=a;} else {from=a;to=b;}
+        if(to>from){ const step=0.1; const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step); if(kTo>=kFrom){ const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom; return asComma(k*step,1);} }
+      } else if(isMedball(n)){
+        const a=parseFloat(String(base).replace(',','.')), b=parseFloat(String(nextBase).replace(',','.'));
+        let from,to; if(betterIsLower){from=b;to=a;} else {from=a;to=b;}
+        if(to>from){ const step=0.05; const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step); if(kTo>=kFrom){ const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom; return asComma(k*step,2);} }
+      } else if(isEndurance(n) || (isMeters(s.unit) && !isMedball(n) && !isHundred(n)) || isReps(s.unit)){
+        const a=parseInt(base,10), b=parseInt(String(nextBase),10);
+        const lo = betterIsLower ? (b+1) : a, hi = betterIsLower ? a : (b-1);
+        if(hi>=lo) return String(Math.floor(Math.random()*(hi-lo+1))+lo);
+      }
+    }
+    return base;
+  };
+
+  let solution=null;
+  for(let tries=0; tries<20000 && !solution; tries++){
+    const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
+    const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
+    if(!c1.length||!c2.length) break;
+    const v1=c1[Math.floor(Math.random()*c1.length)];
+    const v2=c2[Math.floor(Math.random()*c2.length)];
+    let v3=target-v1-v2;
+    if(v3>hiPts) v3=hiPts;
+    if(v3<loPts) continue;
+    if(!allowed[2].includes(v3)) continue;
+
+    let sum=v1+v2+v3;
+    if(sum>=nextBound){
+      let over = sum-(nextBound-1);
+      while(over>0){
+        let arr=[v1,v2,v3];
+        let idx=arr.indexOf(Math.max(...arr));
+        if(idx===0 && v1>loPts){ v1--; over--; }
+        else if(idx===1 && v2>loPts){ v2--; over--; }
+        else if(idx===2 && v3>loPts){ v3--; over--; }
+        else break;
+      }
+      sum=v1+v2+v3;
+      if(sum>=nextBound) continue;
+    }
+
+    const r1=asRes(names[0],v1), r2=asRes(names[1],v2), r3=asRes(names[2],v3);
+    if(!r1||!r2||!r3) continue;
+    solution=[
+      {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
+      {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
+      {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
+    ];
+  }
+
+  if(!solution){ alert('Не вдалося згенерувати під обмеження. Спробуй ще раз або вибери інші вправи.'); return; }
+
+  tbody.innerHTML='';
+  solution.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tbody.appendChild(tr);
+  });
+  const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+  document.getElementById('sum').textContent=Math.floor(total);
+}
+
+document.getElementById('genBtn').addEventListener('click',generate);
+loadAll();
+</script>
+</body>
+</html>
