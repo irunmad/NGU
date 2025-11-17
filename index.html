@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Генератор · r41</title>
+<title>Генератор · r42</title>
 <style>
 :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
 *{box-sizing:border-box}
@@ -41,7 +41,6 @@ tfoot td{background:#f8fafc;font-weight:600}
 .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
 .error{padding:10px;border:1px solid #fecaca;background:#fff1f2;color:#7f1d1d;border-radius:10px;margin-top:10px;white-space:pre-wrap}
 .ok{color:#059669}
-/* modal */
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
 .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
 .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -55,7 +54,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">r41</div>
+    <div class="chip">r42</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -114,7 +113,6 @@ tfoot td{background:#f8fafc;font-weight:600}
   <div id="loadBox" class="loading">Дані шкал завантажуються…</div>
 </div>
 
-<!-- selection modal -->
 <div class="modal-back" id="modalBack">
   <div class="modal">
     <div class="topbar2">
@@ -130,7 +128,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r41';
+const VER='r42';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -176,7 +174,6 @@ async function fetchText(url){
 async function loadScales(url){
   const text = await fetchText(url);
   const rows = parseCSV_exact(text,["№","Назва","Одиниця","Бал","Результат"]);
-  const head = rows[0];
   const iID=0, iName=1, iUnit=2, iPts=3, iRes=4;
   const byName={};
   for(const r of rows.slice(1)){
@@ -195,17 +192,38 @@ async function loadScales(url){
 function toSex(s){ s=String(s||'').trim().toLowerCase(); if(s.startsWith('чоло')) return 'M'; if(s.startsWith('ж')) return 'J'; return s.toUpperCase(); }
 async function loadThresholds(url){
   const text = await fetchText(url);
-  const rows = parseCSV_exact(text,["Стать","Група","Категорія","Пороговий мінімум","3","4","5"]);
+  const lines = String(text).replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim().length);
+  if(!lines.length) throw new Error('Порожній файл');
+  const delim = pickDelim(lines[0]);
+  const rows = lines.map(l=>{
+    const out=[]; let cur=''; let q=false;
+    for(let i=0;i<l.length;i++){
+      const ch=l[i];
+      if(ch=='"'){ if(q && l[i+1]=='"'){cur+='"'; i++;} else q=!q; }
+      else if(ch==delim && !q){ out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+    out.push(cur);
+    return out.map(c=>stripQuotes(c));
+  });
+  const header = rows[0];
+  const need = ["Стать","Група","Категорія","Пороговий мінімум","3","4","5"];
+  const map = {};
+  for(const h of need){
+    const idx = header.findIndex(x=>String(x).trim()===h);
+    if(idx===-1) throw new Error('Відсутня колонка: '+h+' (файл має: '+header.join(' | ')+')');
+    map[h]=idx;
+  }
   const out=[];
   for(const r of rows.slice(1)){
     out.push({
-      sex: toSex(r[0]||''),
-      age_group: String(r[1]||'').trim(),
-      category: String(r[2]||'').trim(),
-      min_per_exercise: r[3]||'',
-      sum_for_grade_3: r[4]||'',
-      sum_for_grade_4: r[5]||'',
-      sum_for_grade_5: r[6]||'',
+      sex: toSex(r[map['Стать']]||''),
+      age_group: String(r[map['Група']]||'').trim(),
+      category: String(r[map['Категорія']]||'').trim(),
+      min_per_exercise: r[map['Пороговий мінімум']]||'',
+      sum_for_grade_3: r[map['3']]||'',
+      sum_for_grade_4: r[map['4']]||'',
+      sum_for_grade_5: r[map['5']]||'',
     });
   }
   return out;
@@ -252,7 +270,6 @@ async function loadAll(){
   }catch(e){ showErr('Фатальна помилка: '+(e&&e.message?e.message:String(e))); }
 }
 
-/* === UI === */
 const ageGrid = document.getElementById('ageGrid');
 for(let g=1;g<=7;g++){
   const lab=document.createElement('label'); lab.className='inline';
@@ -281,7 +298,6 @@ function renderPicked(){
   });
 }
 
-/* === selection modal === */
 const modalBack=document.getElementById('modalBack');
 const editBtn=document.getElementById('editBtn');
 const closeModal=document.getElementById('closeModal');
@@ -326,7 +342,6 @@ editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='fle
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
-/* === helpers for results variation === */
 function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
 function isReps(unit){ return /раз|рази/i.test(unit); }
 function isHundred(name){ return /100\s*м/i.test(name); }
@@ -400,9 +415,9 @@ function generate(){
       sMin = s4; nextBound = s5 || (s4+999999); target = sampleSkewed(s4, nextBound);
     } else if(grade===3){
       sMin = s3; nextBound = s4 || (s3+999999); target = sampleSkewed(s3, nextBound);
-    } else { // grade 2 — строго ниже порога 3, с нормальным распредом в пределах 30% диапазона
+    } else { // 2: строго ниже порога 3, с нормальным распредом в пределах 30% порога
       const hi = Math.max(0, s3-1);
-      const lo = Math.max(0, Math.floor(s3 - 0.3*s3)); // 70% от s3
+      const lo = Math.max(0, Math.floor(s3 - 0.3*s3));
       const mean = Math.floor(hi - (hi-lo)*0.2);
       const sd = (hi-lo)/6 || 1;
       sMin = -Infinity; nextBound = s3; target = Math.min(sampleTruncNormal(lo, hi, mean, sd), hi);
@@ -467,7 +482,7 @@ function generate(){
       }
 
       if(grade===2){
-        const lo2 = Math.max(0, Math.floor(s3 - 0.3*s3)); // 70% от s3
+        const lo2 = Math.max(0, Math.floor(s3 - 0.3*s3));
         if(sum>=s3){
           let need = sum-(s3-1);
           while(need>0){ let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3)); if(idx==0 && v1>loPts){ v1--; need--; } else if(idx==1 && v2>loPts){ v2--; need--; } else if(idx==2 && v3>loPts){ v3--; need--; } else break; }
@@ -506,7 +521,7 @@ function generate(){
     tbody.innerHTML='';
     solution.forEach(r=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+      tr.innerHTML=`<td class=\"idcell\"><span class=\"idpill\">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
       tbody.appendChild(tr);
     });
     const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
