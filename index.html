@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Генератор · r45</title>
+<title>Генератор · r46</title>
 <style>
 :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
 *{box-sizing:border-box}
@@ -54,7 +54,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">r45</div>
+    <div class="chip">r46</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -128,7 +128,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r45';
+const VER='r46';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
@@ -139,13 +139,24 @@ const dataState = $('#dataState'), errBox = $('#err');
 function showErr(s){ errBox.textContent=String(s); errBox.style.display='block'; }
 function setState(s){ dataState.textContent=s; }
 
-function stripQuotes(s){ return String(s??'').replace(/^\\s*[\\"'«»]+|[\\"'«»]+\\s*$/g,'').trim(); }
-function onlyInt(s){ const m=String(s||'').match(/(\\d+)/); return m?parseInt(m[1],10):0; }
+function stripQuotes(s){ return String(s??'').replace(/^[\uFEFF\s"«»']+|[\s"«»']+$/g,'').trim(); }
+function onlyInt(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0; }
 function asComma(x,d){ return x.toFixed(d).replace('.',','); }
 
-function pickDelim(line){ if(line.includes('\\t')) return '\\t'; if(line.includes(';')) return ';'; if(line.includes('|')) return '|'; return ','; }
+function splitLinesHard(s){
+  // robust: handles \r\n, \n, or legacy Mac \r
+  return String(s).split(/\r\n|\n|\r/);
+}
+
+function pickDelim(line){
+  if(line.includes('\t')) return '\t';
+  if(line.includes(';')) return ';';
+  if(line.includes('|')) return '|';
+  return ',';
+}
+
 function parseCSV_exact(text, expectHeaders){
-  const lines = String(text).replace(/^\\uFEFF/,'').split(/\\r?\\n/).filter(x=>x.trim().length);
+  const lines = splitLinesHard(text).filter(x=>x.trim().length);
   if(!lines.length) throw new Error('Порожній файл');
   const delim = pickDelim(lines[0]);
   const rows = lines.map(l=>{
@@ -179,7 +190,7 @@ async function loadScales(url){
   for(const r of rows.slice(1)){
     const name=stripQuotes(r[iName]||''); if(!name) continue;
     const unit=stripQuotes(r[iUnit]||'');
-    const pts =parseInt(String(r[iPts]||'').replace(/\\s/g,''),10);
+    const pts =parseInt(String(r[iPts]||'').replace(/\s/g,''),10);
     const res =stripQuotes(r[iRes]||'');
     const id  =stripQuotes(r[iID]||'')||'—';
     if(!Number.isFinite(pts)||!res) continue;
@@ -192,7 +203,7 @@ async function loadScales(url){
 function toSex(s){ s=String(s||'').trim().toLowerCase(); if(s.startsWith('чоло')) return 'M'; if(s.startsWith('ж')) return 'J'; return s.toUpperCase(); }
 async function loadThresholds(url){
   const text = await fetchText(url);
-  const lines = String(text).replace(/^\\uFEFF/,'').split(/\\r?\\n/).filter(x=>x.trim().length);
+  const lines = splitLinesHard(text).filter(x=>x.trim().length);
   if(!lines.length) throw new Error('Порожній файл');
   const delim = pickDelim(lines[0]);
   const rows = lines.map(l=>{
@@ -343,10 +354,10 @@ closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
 
 function isReps(unit){ return /раз|рази/i.test(unit); }
-function isHundred(name){ return /100\\s*м/i.test(name); }
+function isHundred(name){ return /100\s*м/i.test(name); }
 function isMedball(name){ return /медбол/i.test(name); }
 function isEndurance(name){ return /витривал/i.test(name); }
-function isMeters(unit){ return /\\bм\\b/i.test(unit); }
+function isMeters(unit){ return /\bм\b/i.test(unit); }
 
 function variedResult(name, unit, pts, map){
   const baseRaw = String(map[pts] ?? '').trim();
@@ -444,8 +455,7 @@ function generate(){
   try{
     if(!state.ready){ return; }
     if(!picked || picked.length!==3){ return; }
-    const t = activeThreshold();
-    if(!t){ return; }
+    const t = activeThreshold(); if(!t){ return; }
 
     const minPer=onlyInt(t.min_per_exercise);
     const s3=onlyInt(t.sum_for_grade_3), s4=onlyInt(t.sum_for_grade_4), s5=onlyInt(t.sum_for_grade_5);
@@ -543,7 +553,7 @@ function generate(){
         solution=[
           {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
           {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
-          {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
+          {name:names[2], displayName:names[2], points=v3, result:r3, badge:(scales[names[2]].id||'—')},
         ];
       }
       return solution;
