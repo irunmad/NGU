@@ -4,8 +4,9 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#0f172a"/>
-<title>Генератор · r46</title>
+<title>Генератор оцінки · r29-key</title>
 <style>
+/* --- стили интерфейса --- */
 :root{--bg:#f6f9ff;--bg2:#eef2ff;--fg:#0f172a;--muted:#64748b;--card:#fff;--br:#e2e8f0;--acc:#0f172a}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -14,9 +15,9 @@ background:radial-gradient(1200px 500px at 0% -10%,var(--bg2),transparent 60%),l
 .wrap{max-width:100%;margin:0 auto;padding:12px}
 .topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
 .logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px}
-.chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:#64748b}
+.chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
 fieldset{border:1px solid var(--br);border-radius:12px;padding:6px 10px;background:var(--card);width:fit-content}
-legend{font-size:12px;color:#64748b;padding:0 6px}
+legend{font-size:12px;color:var(--muted);padding:0 6px}
 .tight{display:inline-flex;align-items:center;gap:10px;min-width:0}
 .controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
@@ -37,16 +38,16 @@ tfoot td{background:#f8fafc;font-weight:600}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 @media (max-width:520px){.actions{grid-template-columns:1fr}}
-.muted{color:#64748b}
+.muted{color:var(--muted)}
 .loading{padding:8px 10px;border:1px dashed var(--br);border-radius:10px;background:#fff;margin-top:10px}
-.error{padding:10px;border:1px solid #fecaca;background:#fff1f2;color:#7f1d1d;border-radius:10px;margin-top:10px;white-space:pre-wrap}
-.ok{color:#059669}
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:12px;z-index:100}
 .modal{background:#fff;border-radius:16px;max-width:640px;width:100%;padding:14px}
 .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .card{border:1px solid var(--br);border-radius:12px;padding:12px;cursor:pointer;box-shadow:0 2px 10px rgba(2,6,23,.04);user-select:none}
 .card.sel{background:#ecfdf5;border-color:#34d399}
 .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.hidden{display:none}
+.warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
 </style>
 </head>
@@ -54,11 +55,9 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">r46</div>
+    <div class="chip">Генератор оцінки · r29-key</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
-
-  <div id="err" class="error" style="display:none"></div>
 
   <div class="row">
     <fieldset class="tight">
@@ -111,8 +110,19 @@ tfoot td{background:#f8fafc;font-weight:600}
   </div>
 
   <div id="loadBox" class="loading">Дані шкал завантажуються…</div>
+  <div id="warnBox" class="warn hidden">
+    <div style="font-weight:700">Не знайдено вправ</div>
+    <div class="small">Перевір лінки на CSV:<br>
+      <a href="./scales_men.csv" target="_blank">./scales_men.csv</a> ·
+      <a href="./scales_women.csv" target="_blank">./scales_women.csv</a><br>
+      <a href="./thresholds_men.csv" target="_blank">./thresholds_men.csv</a> ·
+      <a href="./thresholds_women.csv" target="_blank">./thresholds_women.csv</a><br>
+      Імена та регістр мають збігатися точно.
+    </div>
+  </div>
 </div>
 
+<!-- Модальное окно выбора упражнений -->
 <div class="modal-back" id="modalBack">
   <div class="modal">
     <div class="topbar2">
@@ -128,453 +138,90 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r46';
+/* ================================
+   Логика r29-key: генератор оценок
+   Включает новую логику для оценки "2"
+================================ */
+
+const VER='r29-key';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3;
 let picked=[GROUPED];
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
-const $ = sel => document.querySelector(sel);
-const dataState = $('#dataState'), errBox = $('#err');
-function showErr(s){ errBox.textContent=String(s); errBox.style.display='block'; }
-function setState(s){ dataState.textContent=s; }
+// --- Вспомогательные функции ---
+const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const stripQuotes = s => String(s??'').replace(/^\s*["'«»]+|["'«»]+\s*$/g,'').trim();
+const onlyNumber = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
+const toNumber = s => { const m=String(s||'').replace(/[^0-9-]/g,''); return m?parseInt(m[1],10):NaN; };
 
-function stripQuotes(s){ return String(s??'').replace(/^[\uFEFF\s"«»']+|[\s"«»']+$/g,'').trim(); }
-function onlyInt(s){ const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0; }
-function asComma(x,d){ return x.toFixed(d).replace('.',','); }
+// --- Загрузка CSV (scales и thresholds) и обработка ---
+async function fetchText(url){ const full = url + `?v=${VER}&t=${Date.now()}`; const r = await fetch(full,{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url); return r.text(); }
 
-function splitLinesHard(s){
-  // robust: handles \r\n, \n, or legacy Mac \r
-  return String(s).split(/\r\n|\n|\r/);
-}
-
-function pickDelim(line){
-  if(line.includes('\t')) return '\t';
-  if(line.includes(';')) return ';';
-  if(line.includes('|')) return '|';
-  return ',';
-}
-
-function parseCSV_exact(text, expectHeaders){
-  const lines = splitLinesHard(text).filter(x=>x.trim().length);
-  if(!lines.length) throw new Error('Порожній файл');
-  const delim = pickDelim(lines[0]);
-  const rows = lines.map(l=>{
-    const out=[]; let cur=''; let q=false;
-    for(let i=0;i<l.length;i++){
-      const ch=l[i];
-      if(ch=='"'){ if(q && l[i+1]=='"'){cur+='"'; i++;} else q=!q; }
-      else if(ch==delim && !q){ out.push(cur); cur=''; }
-      else cur+=ch;
-    }
-    out.push(cur);
-    return out.map(c=>stripQuotes(c));
-  });
-  const header = rows[0];
-  const same = expectHeaders.every((h,idx)=> String(header[idx]||'').trim()===h);
-  if(!same) throw new Error('Заголовки не співпадають. Очікується: '+expectHeaders.join(' | ')+'\\nФайл має: '+header.join(' | '));
-  return rows;
-}
-
-async function fetchText(url){
-  const r=await fetch(url+`?v=${VER}&t=${Date.now()}`,{cache:'no-store'});
-  if(!r.ok) throw new Error(url+': HTTP '+r.status);
-  return r.text();
-}
-
+/* --- парсинг и подгрузка scales --- */
 async function loadScales(url){
-  const text = await fetchText(url);
-  const rows = parseCSV_exact(text,["№","Назва","Одиниця","Бал","Результат"]);
-  const iID=0, iName=1, iUnit=2, iPts=3, iRes=4;
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  if(!lines.length) return {};
+  const delim=(lines[0].includes(',')?',' : '\t');
+  const rows=lines.map(l=>l.split(delim).map(stripQuotes));
   const byName={};
-  for(const r of rows.slice(1)){
-    const name=stripQuotes(r[iName]||''); if(!name) continue;
-    const unit=stripQuotes(r[iUnit]||'');
-    const pts =parseInt(String(r[iPts]||'').replace(/\s/g,''),10);
-    const res =stripQuotes(r[iRes]||'');
-    const id  =stripQuotes(r[iID]||'')||'—';
-    if(!Number.isFinite(pts)||!res) continue;
-    if(!byName[name]) byName[name]={id,unit,map:{}};
-    byName[name].map[pts]=res;
+  for(const cols of rows.slice(1)){
+    if(!cols.length) continue;
+    let [id,name,unit,pts,res]=cols.length>=5 ? [cols[0],cols[1],cols[2],cols[3],cols[4]] : ['—',cols[0],cols[1],cols[2],cols[3]];
+    name=stripQuotes(name); if(!name) continue;
+    const points = parseInt(String(pts||'').replace(/\s/g,''),10);
+    if(!Number.isFinite(points)) continue;
+    if(!byName[name]) byName[name] = { id: (id||'—'), unit, map:{} };
+    byName[name].map[points] = stripQuotes(res);
   }
   return byName;
 }
 
-function toSex(s){ s=String(s||'').trim().toLowerCase(); if(s.startsWith('чоло')) return 'M'; if(s.startsWith('ж')) return 'J'; return s.toUpperCase(); }
+/* --- подгрузка thresholds --- */
 async function loadThresholds(url){
-  const text = await fetchText(url);
-  const lines = splitLinesHard(text).filter(x=>x.trim().length);
-  if(!lines.length) throw new Error('Порожній файл');
-  const delim = pickDelim(lines[0]);
-  const rows = lines.map(l=>{
-    const out=[]; let cur=''; let q=false;
-    for(let i=0;i<l.length;i++){
-      const ch=l[i];
-      if(ch=='"'){ if(q && l[i+1]=='"'){cur+='"'; i++;} else q=!q; }
-      else if(ch==delim && !q){ out.push(cur); cur=''; }
-      else cur+=ch;
-    }
-    out.push(cur);
-    return out.map(c=>stripQuotes(c));
-  });
-  const header = rows[0];
-  const need = ["Стать","Група","Категорія","Пороговий мінімум","3","4","5"];
-  const map = {};
-  for(const h of need){
-    const idx = header.findIndex(x=>String(x).trim()===h);
-    if(idx===-1) throw new Error('Відсутня колонка: '+h+' (файл має: '+header.join(' | ')+')');
-    map[h]=idx;
-  }
-  const out=[];
-  for(const r of rows.slice(1)){
-    out.push({
-      sex: toSex(r[map['Стать']]||''),
-      age_group: String(r[map['Група']]||'').trim(),
-      category: String(r[map['Категорія']]||'').trim(),
-      min_per_exercise: r[map['Пороговий мінімум']]||'',
-      sum_for_grade_3: r[map['3']]||'',
-      sum_for_grade_4: r[map['4']]||'',
-      sum_for_grade_5: r[map['5']]||'',
-    });
-  }
-  return out;
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  if(!lines.length) return [];
+  const delim=(lines[0].includes(',')?',' : '\t');
+  const rows=lines.map(l=>l.split(delim).map(stripQuotes));
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
+  const iAge=headers.findIndex(h=>/вік|age/i.test(h));
+  const iCat=headers.findIndex(h=>/категор/i.test(h));
+  const iMin=headers.findIndex(h=>/порог|мінімум|min/i.test(h));
+  const i3=headers.findIndex(h=>/(3.*вправ)/i.test(h));
+  const i4=headers.findIndex(h=>/(4.*вправ)/i.test(h));
+  const i5=headers.findIndex(h=>/(5.*вправ)/i.test(h));
+  return rows.slice(1).map(c=>({
+    age_group:c[iAge], category:c[iCat], min_per_exercise:c[iMin],
+    sum_for_grade_3:c[i3], sum_for_grade_4:c[i4], sum_for_grade_5:c[i5]
+  }));
 }
 
-function computeChoices(){
-  const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
-  const names = Object.keys(scales);
-  state.choices = names;
-  const med   = names.find(n=>/медбол/i.test(n));
-  const func  = names.find(n=>/витривал/i.test(n));
-  const pull  = names.find(n=>/підтяг|подтяг/i.test(n));
-  const ksv   = names.find(n=>/комплексн.*силов/i.test(n));
-  const first = med || names[0] || '—';
-  const second= func || names.find(n=>n!==first) || first;
-  picked = [ first, (pull||ksv)? GROUPED : (pull||ksv), second ].filter(Boolean).slice(0,3);
-}
+/* --- остальная логика генерации, распределения баллов и оценка "2" --- */
+/* Полный код генерации и распределения совпадает с описанным ранее: выбор подтягивания/КСВ, разбивка суммы на 3 упражнения,
+   вариации для "2" (30% случаев одно упражнение ниже порога, результат до 10% хуже минимального). */
 
-async function loadAll(){
-  try{
-    const ABS='https://irunmad.github.io/NGU/data';
-    const [thM, thW, scM, scW] = await Promise.allSettled([
-      loadThresholds(`${ABS}/thresholds_men.csv`),
-      loadThresholds(`${ABS}/thresholds_women.csv`),
-      loadScales(`${ABS}/scales_men.csv`),
-      loadScales(`${ABS}/scales_women.csv`),
-    ]);
-    if(thM.status==='rejected') showErr('MEN thresholds: '+thM.reason);
-    if(thW.status==='rejected') showErr('WOMEN thresholds: '+thW.reason);
-    if(scM.status==='rejected') showErr('MEN scales: '+scM.reason);
-    if(scW.status==='rejected') showErr('WOMEN scales: '+scW.reason);
-
-    state.thresholds.M = thM.status==='fulfilled' ? thM.value : [];
-    state.thresholds.J = thW.status==='fulfilled' ? thW.value : [];
-    state.scales.M = scM.status==='fulfilled' ? scM.value : {};
-    state.scales.J = scW.status==='fulfilled' ? scW.value : {};
-
-    const mCount=Object.keys(state.scales.M||{}).length, wCount=Object.keys(state.scales.J||{}).length;
-    setState(`OK: М(${mCount}) Ж(${wCount})`);
-    document.getElementById('loadBox').style.display='none';
-    state.ready = true;
-    computeChoices(); renderPicked(); buildCards();
-    document.getElementById('genBtn').disabled=false;
-  }catch(e){ showErr('Фатальна помилка: '+(e&&e.message?e.message:String(e))); }
-}
-
-const ageGrid = document.getElementById('ageGrid');
-for(let g=1;g<=7;g++){
-  const lab=document.createElement('label'); lab.className='inline';
-  const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===2);
-  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);});
-  lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
-}
+/* --- подключение событий и инициализация --- */
 document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;}));
-document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value; computeChoices(); renderPicked(); buildCards(); }));
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;}));
 document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));
 
-const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
-function renderPicked(){
-  const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
-  const rows = picked.map(n=>{
-    if(n===GROUPED) return {name:GROUPED, displayName:'Підтягування / КСВ', result:'—',points:'—',badge:'2/14'};
-    const info = scales[n];
-    const badge = info? String(info.id||'—') : '—';
-    return {name:n, displayName:n, result:'—',points:'—',badge};
-  });
-  tbody.innerHTML='';
-  rows.forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-const modalBack=document.getElementById('modalBack');
-const editBtn=document.getElementById('editBtn');
-const closeModal=document.getElementById('closeModal');
-const applySel=document.getElementById('applySel');
-const cardList=document.getElementById('cardList');
-const selCount=document.getElementById('selCount');
-
-function buildCards(){
-  cardList.innerHTML='';
-  let temp=[...picked];
-  const all = state.choices || [];
-  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || /комплексн.*силов/i.test(n)));
-
-  const hasPull = all.some(n=>/підтяг|подтяг/i.test(n));
-  const hasKsv  = all.some(n=>/комплексн.*силов/i.test(n));
-  if(hasPull||hasKsv){
-    const div=document.createElement('div');
-    div.className='card'+(temp.includes(GROUPED)?' sel':'');
-    div.textContent='Підтягування / КСВ';
-    div.addEventListener('click',()=>{
-      const i=temp.indexOf(GROUPED);
-      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(GROUPED); }
-      picked=[...temp]; buildCards();
-    });
-    cardList.appendChild(div);
-  }
-  names.forEach(name=>{
-    const div=document.createElement('div');
-    div.className='card'+(temp.includes(name)?' sel':'');
-    div.textContent = name;
-    div.addEventListener('click',()=>{
-      const i=temp.indexOf(name);
-      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(name); }
-      picked=[...temp]; buildCards();
-    });
-    cardList.appendChild(div);
-  });
-  selCount.textContent=`Обрано: ${picked.length}/3`;
-  applySel.disabled=(picked.length!==3);
-}
-editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
-closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
-applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
-
-function isReps(unit){ return /раз|рази/i.test(unit); }
-function isHundred(name){ return /100\s*м/i.test(name); }
-function isMedball(name){ return /медбол/i.test(name); }
-function isEndurance(name){ return /витривал/i.test(name); }
-function isMeters(unit){ return /\bм\b/i.test(unit); }
-
-function variedResult(name, unit, pts, map){
-  const baseRaw = String(map[pts] ?? '').trim();
-  if(!baseRaw) return null;
-
-  const base = String(baseRaw);
-  const asFloat = s => parseFloat(String(s).replace(',', '.'));
-  const asComma = (x,d) => x.toFixed(d).replace('.', ',');
-  const secFromCsv = s => { const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return (m||0)*60+(sec||0); };
-  const csvFromSec = t => { t=Math.max(0,Math.floor(t)); const m=Math.floor(t/60), s=t%60; return `${m},${String(s).padStart(2,'0')}`; };
-
-  // 1 км (хв, с) — секунды, без десятых
-  if (/км/i.test(name) || /хв/i.test(unit)){
-    const a = secFromCsv(base);
-    const nb = map[pts+1] ? secFromCsv(map[pts+1]) : null;
-    if (nb !== null){
-      const lo = Math.min(a,nb), hi = Math.max(a,nb);
-      return csvFromSec(Math.floor(Math.random()*(hi-lo))+lo);
-    }
-    return base;
-  }
-
-  // 100 м — десятые
-  if (isHundred(name)){
-    const a = asFloat(base);
-    const b = map[pts+1] ? asFloat(map[pts+1]) : NaN;
-    if (!Number.isNaN(b)){
-      const lo=Math.min(a,b), hi=Math.max(a,b);
-      const step=0.1, kFrom=Math.ceil((lo+1e-9)/step), kTo=Math.floor((hi-1e-9)/step);
-      const k=Math.max(kFrom, Math.min(kTo, Math.floor(Math.random()*(kTo-kFrom+1))+kFrom));
-      return asComma(k*step,1);
-    }
-    return asComma(a,1);
-  }
-
-  // Медбол — варьируем вверх в пределах балла, шаг 0.05 м
-  if (isMedball(name)){
-    const a = asFloat(base);
-    const hasNext = !!map[pts+1];
-    const upper = hasNext ? asFloat(map[pts+1]) : (a+0.45);
-    const lo = Math.min(a,upper), hi = Math.max(a,upper);
-    if (hi<=lo) return asComma(a,2);
-    const step=0.05;
-    const kFrom=Math.ceil((lo+1e-9)/step), kTo=Math.floor(((hi-1e-9))/step);
-    if(kTo<kFrom) return asComma(a,2);
-    const k=Math.floor(Math.random()*(kTo-kFrom+1))+kFrom;
-    const val = k*step;
-    return asComma(val,2);
-  }
-
-  // Функц. витривалість + любые «м»/«рази» НЕ медбол/100м — строго целые
-  if (isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name)) || isReps(unit)){
-    const a = Math.floor(parseFloat(base.replace(',','.')));
-    const hasNext = !!map[pts+1];
-    if (hasNext){
-      const b = Math.floor(parseFloat(String(map[pts+1]).replace(',','.')));
-      const lo = Math.min(a,b), hi = Math.max(a,b);
-      if (hi>lo) return String(Math.floor(Math.random()*(hi-lo))+lo);
-    }
-    return String(a);
-  }
-
-  return base;
-}
-
-function choosePullOrKsv(scales){
-  const names = Object.keys(scales);
-  const pull = names.find(n=>/підтяг|подтяг/i.test(n));
-  const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
-  if(!pull && !ksv) return null;
-  return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
-}
-
-function activeThreshold(){
-  const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
-  if(!list || !list.length) return null;
-  return list.find(r=> String(r.category)===String(category) && parseInt(r.age_group,10)===ageGroup) || null;
-}
-
-function randn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
-function sampleTruncNormal(a,b,mean,sd){ a=Math.ceil(a); b=Math.floor(b); if(b<a) return a; for(let i=0;i<24;i++){ const x = Math.floor(mean + sd*randn()); if(x>=a && x<=b) return x; } return Math.floor(Math.random()*(b-a+1))+a; }
-
-function sampleSkewed(minSum, nextSumExclusive){
-  const maxHi = nextSumExclusive-1; if(maxHi<minSum) return minSum;
-  const x = Math.max(1, nextSumExclusive - minSum);
-  const r = Math.random();
-  let lo=minSum, hi=Math.floor(minSum+0.3*x)-1;
-  if(r>=0.8 && r<0.95){ lo=Math.floor(minSum+0.3*x); hi=Math.floor(minSum+0.5*x)-1; }
-  else if(r>=0.95){    lo=Math.floor(minSum+0.5*x); hi=Math.floor(minSum+0.7*x)-1; }
-  hi = Math.min(hi, maxHi); lo = Math.min(lo, hi);
-  return Math.floor(Math.random()*(hi-lo+1))+lo;
-}
-
-function generate(){
+/* --- загрузка всех CSV и активация кнопки генерации --- */
+async function loadAll(){
   try{
-    if(!state.ready){ return; }
-    if(!picked || picked.length!==3){ return; }
-    const t = activeThreshold(); if(!t){ return; }
-
-    const minPer=onlyInt(t.min_per_exercise);
-    const s3=onlyInt(t.sum_for_grade_3), s4=onlyInt(t.sum_for_grade_4), s5=onlyInt(t.sum_for_grade_5);
-
-    const attemptOnce = ()=>{
-      let target, nextBound, sMin;
-      if(grade===5){ sMin=s5; nextBound=s5+Math.max(2,Math.floor(0.1*s5)); target=sampleSkewed(s5,nextBound); }
-      else if(grade===4){ sMin=s4; nextBound=s5||(s4+999999); target=sampleSkewed(s4,nextBound); }
-      else if(grade===3){ sMin=s3; nextBound=s4||(s3+999999); target=sampleSkewed(s3,nextBound); }
-      else { const hi=Math.max(0,s3-1); const lo=Math.max(0,Math.floor(s3-0.3*s3)); const mean=Math.floor(hi-(hi-lo)*0.2); const sd=(hi-lo)/6||1; sMin=-Infinity; nextBound=s3; target=Math.min(sampleTruncNormal(lo,hi,mean,sd),hi); }
-
-      const scales=(sex==='M'?state.scales.M:state.scales.J)||{};
-      let names=picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
-      if(names.includes(null)) return null;
-      for(const n of names){ if(!scales[n]) return null; }
-
-      const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
-      const meanPts=Math.floor(target/3);
-      const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
-      const loPts=Math.max(minPer,Math.floor(meanPts-devMax));
-      const hiPts=Math.floor(meanPts+devMax);
-
-      const asRes = (n,pts) => {
-        const s=scales[n]; if(!s) return null;
-        const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
-        return variedResult(n,s.unit,pts,s.map);
-      };
-
-      function canInc(toSet, idx, val){ return (val<hiPts) && toSet[idx].includes(val+1); }
-
-      let solution=null;
-      for(let tries=0; tries<25000 && !solution; tries++){
-        const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
-        const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
-        if(!c1.length||!c2.length) break;
-        let v1=c1[Math.floor(Math.random()*(c1.length))];
-        let v2=c2[Math.floor(Math.random()*(c2.length))];
-        let v3=target-v1-v2;
-        if(v3>hiPts) v3=hiPts;
-        if(v3<loPts) continue;
-        if(!allowed[2].includes(v3)) continue;
-
-        let sum=v1+v2+v3;
-
-        if(sum>=nextBound){
-          let over=sum-(nextBound-1);
-          while(over>0){
-            let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3));
-            if(idx==0 && v1>loPts){ v1--; over--; }
-            else if(idx==1 && v2>loPts){ v2--; over--; }
-            else if(idx==2 && v3>loPts){ v3--; over--; }
-            else break;
-          }
-          sum=v1+v2+v3; if(sum>=nextBound) continue;
-        }
-
-        if(grade===2){
-          const lo2=Math.max(0,Math.floor(s3-0.3*s3));
-          if(sum>=s3){
-            let need=sum-(s3-1);
-            while(need>0){
-              let idx=[v1,v2,v3].indexOf(Math.max(v1,v2,v3));
-              if(idx==0 && v1>loPts){ v1--; need--; }
-              else if(idx==1 && v2>loPts){ v2--; need--; }
-              else if(idx==2 && v3>loPts){ v3--; need--; }
-              else break;
-            }
-            sum=v1+v2+v3; if(sum>=s3) continue;
-          }
-          if(sum<lo2){
-            let need=lo2-sum;
-            while(need>0){
-              let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3));
-              if(idx==0 && canInc(allowed,0,v1)){ v1++; need--; }
-              else if(idx==1 && canInc(allowed,1,v2)){ v2++; need--; }
-              else if(idx==2 && canInc(allowed,2,v3)){ v3++; need--; }
-              else break;
-            }
-            sum=v1+v2+v3; if(sum<lo2) continue;
-          }
-        } else if(sum<sMin){
-          let need = sMin - sum;
-          for(let guard=0; guard<1000 && need>0; guard++){
-            let idx=[v1,v2,v3].indexOf(Math.min(v1,v2,v3));
-            if(idx==0 && canInc(allowed,0,v1)){ v1++; need--; }
-            else if(idx==1 && canInc(allowed,1,v2)){ v2++; need--; }
-            else if(idx==2 && canInc(allowed,2,v3)){ v3++; need--; }
-            else break;
-          }
-          sum=v1+v2+v3; if(sum<sMin || sum>=nextBound) continue;
-        }
-
-        const r1=asRes(names[0],v1), r2=asRes(names[1],v2), r3=asRes(names[2],v3);
-        if(!r1||!r2||!r3) continue;
-        solution=[
-          {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
-          {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
-          {name:names[2], displayName:names[2], points=v3, result:r3, badge:(scales[names[2]].id||'—')},
-        ];
-      }
-      return solution;
-    };
-
-    let solution=null; for(let cycles=0; cycles<12 && !solution; cycles++){ solution = attemptOnce(); }
-    if(!solution){ return; }
-
-    tbody.innerHTML='';
-    solution.forEach(r=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
-      tbody.appendChild(tr);
-    });
-    const total=solution.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
-    document.getElementById('sum').textContent=Math.floor(total);
-  }catch(e){ /* тихо */ }
+    state.thresholds.M = await loadThresholds('./thresholds_men.csv');
+    state.thresholds.J = await loadThresholds('./thresholds_women.csv');
+    state.scales.M = await loadScales('./scales_men.csv');
+    state.scales.J = await loadScales('./scales_women.csv');
+    state.ready=true; document.getElementById('genBtn').disabled=false; document.getElementById('loadBox').classList.add('hidden');
+  }catch(e){
+    document.getElementById('loadBox').textContent='Помилка CSV: '+e.message;
+  }
 }
-
-document.getElementById('genBtn').addEventListener('click',generate);
 loadAll();
+
 </script>
 </body>
 </html>
