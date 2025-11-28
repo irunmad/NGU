@@ -413,7 +413,25 @@ applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPick
 
 /* ===== вспомогательные для результатов ===== */
 function formatDecComma(x, decs){ return x.toFixed(decs).replace('.',','); }
-function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
+function parseMinSec_csv(s){
+  const raw = String(s||'').trim();
+  if(!raw) return {total:0};
+  const cleaned = raw.replace(/[^0-9,]/g,'');
+  if(cleaned.includes(',')){
+    const [m,sec] = cleaned.split(',');
+    const mm = parseInt(m,10)||0;
+    const ss = parseInt(sec,10)||0;
+    return {total: mm*60 + ss};
+  }
+  const digits = cleaned.replace(/\D/g,'');
+  if(!digits) return {total:0};
+  if(digits.length<=2){
+    return {total: parseInt(digits,10)||0};
+  }
+  const mm = parseInt(digits.slice(0,-2),10)||0;
+  const ss = parseInt(digits.slice(-2),10)||0;
+  return {total: mm*60 + ss};
+}
 function toMinSec_csv(total){ total=Math.max(0,total|0); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
 function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
 function isReps(unit){ return /раз|рази/i.test(unit); }
@@ -422,71 +440,115 @@ function isMedball(name){ return /медбол/i.test(name); }
 function isEndurance(name){ return /витривал/i.test(name); }
 function isHundred(name){ return /100\s*м/i.test(name); }
 
+function neighborValues(map, pts){
+  if(!map) return [];
+  const keys = Object.keys(map).map(k=>parseInt(k,10)).filter(Number.isFinite);
+  if(!keys.length) return [];
+  const min=Math.min(...keys), max=Math.max(...keys);
+  const span=Math.max(Math.abs(max-pts), Math.abs(pts-min));
+  const vals=[];
+  for(let offset=1; offset<=span; offset++){
+    const up = map[pts+offset];
+    if(up!==undefined) vals.push(stripQuotes(up));
+    const down = map[pts-offset];
+    if(down!==undefined) vals.push(stripQuotes(down));
+  }
+  return vals;
+}
+
 /* ===== варьирование результата внутри балла (общая логика для М и Ж) ===== */
 function variedResult(name, unit, pts, map){
   const base = stripQuotes(map[pts]);
   if(!base) return null;
-  const next = map[pts+1];
-  if(!next) return base;
   const betterIsLower = isLowerBetter(name, unit);
+  const neighbours = neighborValues(map, pts);
 
   // 1 км: минуты,секунды → рандом секунды
   if(/км/i.test(name) || /хв/i.test(unit)){
-    const a=parseMinSec_csv(base).total, b=parseMinSec_csv(stripQuotes(next)).total;
-    const lo = betterIsLower ? b : a;
-    const hi = betterIsLower ? a : b;
-    if(hi<=lo) return base;
-    return toMinSec_csv(randint(lo,hi-1));
+    const baseTotal=parseMinSec_csv(base).total;
+    if(!Number.isFinite(baseTotal)) return base;
+    for(const cand of neighbours){
+      const b=parseMinSec_csv(cand).total;
+      if(!Number.isFinite(b)) continue;
+      if((betterIsLower && b>=baseTotal) || (!betterIsLower && b<=baseTotal)) continue;
+      const lo = betterIsLower ? b : baseTotal;
+      const hi = betterIsLower ? baseTotal : b;
+      if(hi<=lo) continue;
+      return toMinSec_csv(randint(lo,hi-1));
+    }
+    return base;
   }
 
   // 100 м: шаг 0.1 с
   if(isHundred(name)){
     const a = parseFloat(String(base).replace(',','.'));
-    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    let from,to;
-    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
-    if(to<=from) return base;
-    const step=0.1;
-    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
-    if(kTo<kFrom) return base;
-    const k=randint(kFrom,kTo);
-    return formatDecComma(k*step, 1);
+    if(!Number.isFinite(a)) return base;
+    for(const cand of neighbours){
+      const b = parseFloat(String(cand).replace(',','.'));
+      if(!Number.isFinite(b)) continue;
+      if((betterIsLower && b>=a) || (!betterIsLower && b<=a)) continue;
+      let from,to;
+      if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+      if(to<=from) continue;
+      const step=0.1;
+      const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+      if(kTo<kFrom) continue;
+      const k=randint(kFrom,kTo);
+      return formatDecComma(k*step, 1);
+    }
+    return base;
   }
 
   // Медбол: шаг 0.05 м
   if(isMedball(name)){
     const a = parseFloat(String(base).replace(',','.'));
-    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    let from,to;
-    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
-    if(to<=from) return base;
-    const step=0.05;
-    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
-    if(kTo<kFrom) return base;
-    const k=randint(kFrom,kTo);
-    return formatDecComma(k*step, 2);
+    if(!Number.isFinite(a)) return base;
+    for(const cand of neighbours){
+      const b = parseFloat(String(cand).replace(',','.'));
+      if(!Number.isFinite(b)) continue;
+      if((betterIsLower && b>=a) || (!betterIsLower && b<=a)) continue;
+      let from,to;
+      if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+      if(to<=from) continue;
+      const step=0.05;
+      const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+      if(kTo<kFrom) continue;
+      const k=randint(kFrom,kTo);
+      return formatDecComma(k*step, 2);
+    }
+    return base;
   }
 
   // Функц. витривалість: целые метры
   if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
-    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : a;
-    const hi = betterIsLower ? a : (b-1);
-    if(hi<lo) return base;
-    return String(randint(lo,hi));
+    const a=parseInt(base,10);
+    if(!Number.isFinite(a)) return base;
+    for(const cand of neighbours){
+      const b=parseInt(cand,10);
+      if(!Number.isFinite(b)) continue;
+      if((betterIsLower && b>=a) || (!betterIsLower && b<=a)) continue;
+      const lo = betterIsLower ? (b+1) : a;
+      const hi = betterIsLower ? a : (b-1);
+      if(hi<lo) continue;
+      return String(randint(lo,hi));
+    }
+    return base;
   }
 
   // Повторы
   if(isReps(unit)){
-    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : a;
-    const hi = betterIsLower ? a : (b-1);
-    if(hi<lo) return base;
-    return String(randint(lo,hi));
+    const a=parseInt(base,10);
+    if(!Number.isFinite(a)) return base;
+    for(const cand of neighbours){
+      const b=parseInt(cand,10);
+      if(!Number.isFinite(b)) continue;
+      if((betterIsLower && b>=a) || (!betterIsLower && b<=a)) continue;
+      const lo = betterIsLower ? (b+1) : a;
+      const hi = betterIsLower ? a : (b-1);
+      if(hi<lo) continue;
+      return String(randint(lo,hi));
+    }
+    return base;
   }
 
   return base;
