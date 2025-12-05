@@ -247,8 +247,11 @@ async function loadThresholds(url){
   })();
 
   const findSumCol = (digit) => {
-    let i = headers.findIndex(h => /з|із|из/.test(h) && /вправ|упраж/.test(h) && new RegExp(`${digit}\\b`).test(h));
+    const quoted = new RegExp(`«\\s*${digit}\\s*»`);
+    let i = headers.findIndex(h => quoted.test(h));
     if (i<0) i = headers.findIndex(h => /sum_for_grade_\d+/.test(h) && h.endsWith(String(digit)));
+    if (i<0) i = headers.findIndex(h => /grade/.test(h) && new RegExp(`${digit}\\b`).test(h));
+    if (i<0) i = headers.findIndex(h => /з|із|из/.test(h) && /вправ|упраж/.test(h) && new RegExp(`«?${digit}»?`).test(h));
     if (i<0) {
       return -1;
     }
