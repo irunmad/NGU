@@ -428,17 +428,17 @@ function variedResult(name, unit, pts, map){
   if(!base) return null;
   const next = map[pts+1];
   if(!next) return base;
-  const betterIsLower = isLowerBetter(name, unit);
+  // Функціональна витривалість у чоловіків і жінок: цілі метри.
+  // Для цієї вправи більше значення означає кращий результат незалежно від підпису одиниці в CSV.
+  const betterIsLower = isEndurance(name) ? false : isLowerBetter(name, unit);
 
-  // Функціональна витривалість у жінок: шкала зберігає загальний час у секундах.
-  // Випадкове значення — кожна ціла секунда, а не лише крок 5 секунд.
-  if(isEndurance(name) && /хв/i.test(unit)){
+  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
     const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : a;
-    const hi = betterIsLower ? a : (b-1);
-    if(hi<lo) return toMinSec_csv(a);
-    return toMinSec_csv(randint(lo,hi));
+    const lo = betterIsLower ? (b+1) : (b+1);
+    const hi = betterIsLower ? a : (a);
+    if(hi<lo) return base;
+    return String(randint(lo,hi));
   }
 
   // 1 км: минуты,секунды → рандом секунды
@@ -478,16 +478,6 @@ function variedResult(name, unit, pts, map){
     if(kTo<kFrom) return base;
     const k=randint(kFrom,kTo);
     return formatDecComma(k*step, 2);
-  }
-
-  // Функц. витривалість: целые метры
-  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
-    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : a;
-    const hi = betterIsLower ? a : (b-1);
-    if(hi<lo) return base;
-    return String(randint(lo,hi));
   }
 
   // Повторы
