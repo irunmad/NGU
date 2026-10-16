@@ -430,6 +430,17 @@ function variedResult(name, unit, pts, map){
   if(!next) return base;
   const betterIsLower = isLowerBetter(name, unit);
 
+  // Функціональна витривалість у жінок: шкала зберігає загальний час у секундах.
+  // Випадкове значення — кожна ціла секунда, а не лише крок 5 секунд.
+  if(isEndurance(name) && /хв/i.test(unit)){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo = betterIsLower ? (b+1) : a;
+    const hi = betterIsLower ? a : (b-1);
+    if(hi<lo) return toMinSec_csv(a);
+    return toMinSec_csv(randint(lo,hi));
+  }
+
   // 1 км: минуты,секунды → рандом секунды
   if(/км/i.test(name) || /хв/i.test(unit)){
     const a=parseMinSec_csv(base).total, b=parseMinSec_csv(stripQuotes(next)).total;
