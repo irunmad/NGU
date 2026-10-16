@@ -510,7 +510,7 @@ function activeThreshold(){
   const allowedCats = category==='3' ? new Set(['3','4']) : new Set(['2']);
   let best=null,bestDiff=1e9;
   for(const r of list){
-    const cat=String(r.category||'').replace(/[\\s\\u00A0]/g,'');
+    const cat=String(r.category||'').replace(/[\s\u00A0]/g,'');
     if(!allowedCats.has(cat)) continue;
     const g=parseInt(r.age_group,10); if(!Number.isFinite(g)) continue;
     const d=Math.abs(g-ageGroup);
@@ -520,7 +520,6 @@ function activeThreshold(){
 }
 
 /* ===== вероятностные выборки для суммарного балла ===== */
- */
 function sampleSkewed(minSum, nextSum){
   const x=Math.max(1,nextSum-minSum);
   const r=Math.random();
