@@ -428,18 +428,18 @@ function variedResult(name, unit, pts, map){
   if(!base) return null;
   const next = map[pts+1];
   if(!next) return base;
-  // Функціональна витривалість у чоловіків і жінок: цілі метри.
-  // Для цієї вправи більше значення означає кращий результат незалежно від підпису одиниці в CSV.
-  const betterIsLower = isEndurance(name) ? false : isLowerBetter(name, unit);
 
-  if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
+  // Функциональная выносливость измеряется в метрах у мужчин и женщин.
+  // Между соседними баллами генерируем любое целое число метров.
+  if(isEndurance(name)){
     const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : a;
-    const hi = betterIsLower ? a : (b-1);
-    if(hi<lo) return base;
+    const lo=Math.min(a,b)+1, hi=Math.max(a,b);
+    if(hi<lo) return String(a);
     return String(randint(lo,hi));
   }
+
+  const betterIsLower = isLowerBetter(name, unit);
 
   // 1 км: минуты,секунды → рандом секунды
   if(/км/i.test(name) || /хв/i.test(unit)){
@@ -480,19 +480,27 @@ function variedResult(name, unit, pts, map){
     return formatDecComma(k*step, 2);
   }
 
+  // Целые метры для остальных упражнений с единицей «м»
+  if(isMeters(unit)){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo=Math.min(a,b)+1, hi=Math.max(a,b);
+    if(hi<lo) return String(a);
+    return String(randint(lo,hi));
+  }
+
   // Повторы
   if(isReps(unit)){
     const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : a;
-    const hi = betterIsLower ? a : (b-1);
+    const lo = betterIsLower ? Math.min(a,b)+1 : Math.min(a,b);
+    const hi = betterIsLower ? Math.max(a,b) : Math.max(a,b)-1;
     if(hi<lo) return base;
     return String(randint(lo,hi));
   }
 
   return base;
 }
-
 /* ===== выбор подтягивания/КСВ 80/20 ===== */
 function choosePullOrKsv(scales){
   const names = Object.keys(scales);
