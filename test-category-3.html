@@ -435,8 +435,8 @@ function variedResult(name, unit, pts, map){
   if(isEndurance(name) || (isMeters(unit) && !isMedball(name) && !isHundred(name))){
     const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
     if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? (b+1) : (b+1);
-    const hi = betterIsLower ? a : (a);
+    const lo = betterIsLower ? (b+1) : a;
+    const hi = betterIsLower ? a : (b-1);
     if(hi<lo) return base;
     return String(randint(lo,hi));
   }
