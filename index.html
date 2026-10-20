@@ -49,13 +49,17 @@ tfoot td{background:#f8fafc;font-weight:600}
 .hidden{display:none}
 .warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
+.result-spinner{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
+.spin-btn{border:1px solid var(--br);background:#f8fafc;border-radius:8px;width:30px;height:38px;font-size:20px;font-weight:700;line-height:1;flex:0 0 30px;padding:0;cursor:pointer}
+.spin-value{display:inline-block;min-width:48px;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
+@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r29</div>
+    <div class="chip">Генератор оцінки · r30</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -75,6 +79,10 @@ tfoot td{background:#f8fafc;font-weight:600}
         <label class="inline"><input type="radio" name="sex" value="J"><span>Ж</span></label>
       </div>
     </fieldset>
+    <fieldset class="tight">
+      <legend>Режим</legend>
+      <label class="inline"><input type="checkbox" id="editorToggle"><span>Редактор</span></label>
+    </fieldset>
   </div>
 
   <!-- Ниже — возрастные группы, под ними оценка -->
@@ -83,7 +91,7 @@ tfoot td{background:#f8fafc;font-weight:600}
       <legend>Вікова група (1–7)</legend>
       <div class="age-grid" id="ageGrid"></div>
     </fieldset>
-    <fieldset style="margin-top:10px">
+    <fieldset id="gradeFieldset" style="margin-top:10px">
       <legend>Оцінка</legend>
       <div class="controls">
         <label class="inline"><input type="radio" name="grade" value="2"><span>2</span></label>
@@ -102,7 +110,10 @@ tfoot td{background:#f8fafc;font-weight:600}
         <tr><td class="idcell"><span class="idpill">2/14</span></td><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
         <tr><td class="idcell"><span class="idpill">—</span></td><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
       </tbody>
-      <tfoot><tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr></tfoot>
+      <tfoot>
+        <tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr>
+        <tr id="assessmentRow" class="hidden"><td></td><td>Оцінка</td><td colspan="2" id="assessment">—</td></tr>
+      </tfoot>
     </table>
 
     <div class="actions">
@@ -140,10 +151,11 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r29';
+const VER='r30';
 const GROUPED='__GROUP_PULL_KSV__';
-let category='2', sex='M', ageGroup=2, grade=3;
+let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
+let editorRows=[];
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
@@ -330,34 +342,66 @@ const ageGrid = document.getElementById('ageGrid');
 for(let g=1;g<=7;g++){
   const lab=document.createElement('label'); lab.className='inline';
   const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);});
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);updateEditorSummary();});
   lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
 }
-document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;}));
-document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value; computeChoices(); renderPicked(); buildCards(); }));
-document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}))
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;updateEditorSummary();}));
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;computeChoices();editorRows=[];renderPicked();buildCards();}));
+document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));
 
-const tbody=document.getElementById('tbody'); const sumEl=document.getElementById('sum');
+const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
+function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
+function initializeEditorRows(){
+  const scales=currentScales();
+  const names=picked.map(n=>n===GROUPED?choosePullOrKsv(scales):n);
+  editorRows=names.map(n=>{
+    const info=scales[n]||{id:'—',unit:'',map:{}};
+    return {name:n,displayName:n||'—',badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
+  });
+  updateEditorSummary();
+}
 function renderRows(rows){
   tbody.innerHTML='';
-  rows.forEach(r=>{
+  rows.forEach((r,index)=>{
+    const resultCell=editorMode
+      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><span class="spin-value">${formatEditorResult(r.name,r.unit,r.resultValue)}</span><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
+      : r.result;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${r.result}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${resultCell}</td><td>${r.points}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
   sumEl.textContent=total;
+  if(editorMode) updateEditorSummary(total);
 }
 function renderPicked(){
-  const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
-  const rows = picked.map(n=>{
-    if(n===GROUPED) return {name:GROUPED, displayName:'Підтягування / КСВ', result:'—',points:'—',badge:(sex==='M'?'2/14':'2/14а')};
-    const info = scales[n];
-    const badge = info? String(info.id||'—') : '—';
-    return {name:n, displayName:n, result:'—',points:'—',badge};
+  if(editorMode){initializeEditorRows();renderRows(editorRows);return;}
+  const scales=currentScales();
+  const rows=picked.map(n=>{
+    if(n===GROUPED) return {name:n,displayName:'Підтягування / КСВ',result:'—',points:'—',badge:(sex==='M'?'2/14':'2/14а')};
+    const info=scales[n],badge=info?String(info.id||'—'):'—';
+    return {name:n,displayName:n,result:'—',points:'—',badge};
   });
   renderRows(rows);
 }
+document.getElementById('editorToggle').addEventListener('change',e=>{
+  editorMode=e.target.checked;
+  document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
+  document.getElementById('assessmentRow').classList.toggle('hidden',!editorMode);
+  if(editorMode) initializeEditorRows();
+  renderCurrentRows();
+});
+function renderCurrentRows(){if(editorMode)renderRows(editorRows);else renderPicked();}
+tbody.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-spin]');
+  if(!btn||!editorMode)return;
+  const row=editorRows[Number(btn.dataset.index)];
+  if(!row)return;
+  const step=editorStep(row.name,row.unit);
+  row.resultValue=Math.max(0,Math.round((row.resultValue+Number(btn.dataset.spin)*step)*1000)/1000);
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  renderRows(editorRows);
+});
 
 /* ===== модал выбора ===== */
 const modalBack=document.getElementById('modalBack');
@@ -367,6 +411,53 @@ const applySel=document.getElementById('applySel');
 const cardList=document.getElementById('cardList');
 const selCount=document.getElementById('selCount');
 
+function editorStep(name,unit){
+  if(isMedball(name)) return 0.05; // 5 см, шаг шкалы медбола
+  if(isHundred(name)) return 0.1;
+  if(/км/i.test(name)) return 1;
+  return 1;
+}
+function formatEditorResult(name,unit,value){
+  if(isMedball(name)) return Number(value).toFixed(2).replace('.',',');
+  if(isHundred(name)) return Number(value).toFixed(1).replace('.',',');
+  if(/км/i.test(name)){
+    const n=Math.max(0,Math.round(Number(value)||0));
+    return `${Math.floor(n/60)},${String(n%60).padStart(2,'0')}`;
+  }
+  return String(Math.round(Number(value)||0));
+}
+function resultMetric(name,unit,value){
+  if(/км/i.test(name)){
+    const p=String(value).split(',').map(x=>parseInt(x,10));
+    return (p[0]||0)*60+(p[1]||0);
+  }
+  const n=Number(String(value).trim().replace(',','.'));
+  return Number.isFinite(n)?n:NaN;
+}
+function scoreForResult(name,unit,value,map){
+  const achieved=Number(value)||0;
+  if(achieved<=0) return 0;
+  const entries=Object.entries(map||{}).map(([p,r])=>({points:Number(p),result:stripQuotes(r)}))
+    .filter(x=>Number.isFinite(x.points)&&x.result&&x.result!=='-'&&x.result!=='—')
+    .map(x=>({...x,metric:resultMetric(name,unit,x.result)}))
+    .filter(x=>Number.isFinite(x.metric));
+  if(!entries.length) return 0;
+  const lower=isLowerBetter(name,unit);
+  const eligible=entries.filter(x=>lower?achieved<=x.metric:achieved>=x.metric);
+  return eligible.length?Math.max(...eligible.map(x=>x.points)):0;
+}
+function updateEditorSummary(total){
+  if(!editorMode) return;
+  const sum=Number.isFinite(total)?total:editorRows.reduce((a,r)=>a+(Number(r.points)||0),0);
+  sumEl.textContent=sum;
+  const th=activeThreshold();
+  if(!th){assessmentEl.textContent='Немає нормативу';return;}
+  const minPer=onlyNumber(th.min_per_exercise);
+  const s3=onlyNumber(th.sum_for_grade_3),s4=onlyNumber(th.sum_for_grade_4),s5=onlyNumber(th.sum_for_grade_5);
+  const below=editorRows.some(r=>(Number(r.points)||0)<minPer);
+  const resultGrade=below?2:(sum>=s5?5:sum>=s4?4:sum>=s3?3:2);
+  assessmentEl.textContent=String(resultGrade)+(below?' — нижче порогового мінімуму':'');
+}
 function buildCards(){
   cardList.innerHTML='';
   let temp=[...picked];
