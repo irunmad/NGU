@@ -421,7 +421,7 @@ tbody.addEventListener('pointerdown',e=>{
   const wheel=e.target.closest('[data-wheel-index]');
   if(!wheel||!editorMode)return;
   wheelGesture={index:Number(wheel.dataset.wheelIndex),startY:e.clientY,lastY:e.clientY,accum:0};
-  wheel.setPointerCapture?.(e.pointerId);
+  tbody.setPointerCapture?.(e.pointerId);
 });
 tbody.addEventListener('pointermove',e=>{
   if(!wheelGesture)return;
@@ -469,7 +469,7 @@ function wheelBounds(row){
   const high=entries.reduce((best,x)=>Math.abs(x.points-50)<Math.abs(best.points-50)?x:best,entries[entries.length-1]);
   const a=Math.min(low.metric,high.metric),b=Math.max(low.metric,high.metric);
   const step=(b-a)/44;
-  return {min:a,max:b,step:Math.max(step,editorStep(row.name,row.unit))};
+  return {min:a,max:b,step:Math.max(step,0.001)};
 }
 function wheelNeighbor(row,direction){
   const b=wheelBounds(row),v=Number(row.resultValue)||0;
