@@ -514,8 +514,8 @@ function choosePullOrKsv(scales){
 function activeThreshold(){
   const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
   if(!list || !list.length) return null;
-  // Selection 2 uses category 2; selection 3 uses categories 3 and 4.
-  // Never fall back to another category (especially category 1) if a match is missing.
+  // Category 2 uses category 2 rows; category 3 uses category 3 or 4 rows.
+  // Do not fall back to category 1 when a matching row is missing.
   const allowedCats = category==='3' ? new Set(['3','4']) : new Set(['2']);
   let best=null,bestDiff=1e9;
   for(const r of list){
