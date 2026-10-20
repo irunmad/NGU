@@ -351,7 +351,7 @@ function renderRows(rows){
 function renderPicked(){
   const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
   const rows = picked.map(n=>{
-    if(n===GROUPED) return {name:GROUPED, displayName:'Підтягування / КСВ', result:'—',points:'—',badge:'2/14'};
+    if(n===GROUPED) return {name:GROUPED, displayName:'Підтягування / КСВ', result:'—',points:'—',badge:(sex==='M'?'2/14':'2/14а')};
     const info = scales[n];
     const badge = info? String(info.id||'—') : '—';
     return {name:n, displayName:n, result:'—',points:'—',badge};
