@@ -49,10 +49,18 @@ tfoot td{background:#f8fafc;font-weight:600}
 .hidden{display:none}
 .warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
-.result-spinner{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
+.result-spinner{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}
 .spin-btn{border:1px solid var(--br);background:#f8fafc;border-radius:8px;width:30px;height:38px;font-size:20px;font-weight:700;line-height:1;flex:0 0 30px;padding:0;cursor:pointer}
 .spin-value{display:inline-block;min-width:48px;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
-@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}}
+.result-wheel{position:relative;width:76px;height:76px;flex:0 0 76px;overflow:hidden;border:1px solid #cbd5e1;border-radius:14px;background:linear-gradient(180deg,#e2e8f0 0%,#fff 34%,#fff 66%,#e2e8f0 100%);touch-action:none;user-select:none;cursor:ns-resize;box-shadow:inset 0 0 8px #cbd5e1}
+.result-wheel:before,.result-wheel:after{content:"";position:absolute;left:0;right:0;height:22px;z-index:2;pointer-events:none}
+.result-wheel:before{top:0;background:linear-gradient(#e2e8f0,transparent)}
+.result-wheel:after{bottom:0;background:linear-gradient(transparent,#e2e8f0)}
+.wheel-prev,.wheel-next{position:absolute;left:0;right:0;text-align:center;height:23px;line-height:23px;font-size:12px;color:#94a3b8;pointer-events:none;font-variant-numeric:tabular-nums}
+.wheel-prev{top:0}.wheel-next{bottom:0}
+.wheel-current{position:absolute;left:0;right:0;top:23px;height:30px;line-height:30px;text-align:center;font-size:15px;font-weight:800;color:#0f172a;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-variant-numeric:tabular-nums;pointer-events:none}
+.editor-fieldset{margin-left:auto}
+@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}.result-wheel{width:68px;height:72px;flex-basis:68px}.editor-fieldset{margin-left:auto}}
 </style>
 </head>
 <body>
@@ -79,8 +87,7 @@ tfoot td{background:#f8fafc;font-weight:600}
         <label class="inline"><input type="radio" name="sex" value="J"><span>Ж</span></label>
       </div>
     </fieldset>
-    <fieldset class="tight">
-      <legend>Режим</legend>
+    <fieldset class="tight editor-fieldset">
       <label class="inline"><input type="checkbox" id="editorToggle"><span>Редактор</span></label>
     </fieldset>
   </div>
@@ -364,7 +371,7 @@ function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach((r,index)=>{
     const resultCell=editorMode
-      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><span class="spin-value">${formatEditorResult(r.name,r.unit,r.resultValue)}</span><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
+      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><div class="result-wheel" data-wheel-index="${index}" role="slider" tabindex="0" aria-label="Колесо грубого налаштування"><span class="wheel-prev">${wheelNeighbor(r,-1)}</span><span class="wheel-current">${formatEditorResult(r.name,r.unit,r.resultValue)}</span><span class="wheel-next">${wheelNeighbor(r,1)}</span></div><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
       : r.result;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${resultCell}</td><td>${r.points}</td>`;
@@ -402,6 +409,41 @@ tbody.addEventListener('click',e=>{
   row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
   renderRows(editorRows);
 });
+let wheelGesture=null;
+tbody.addEventListener('wheel',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode)return;
+  e.preventDefault();
+  const row=editorRows[Number(wheel.dataset.wheelIndex)];
+  if(row)nudgeWheel(row,e.deltaY>0?1:-1,Math.max(1,Math.min(4,Math.round(Math.abs(e.deltaY)/45))));
+},{passive:false});
+tbody.addEventListener('pointerdown',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode)return;
+  wheelGesture={index:Number(wheel.dataset.wheelIndex),startY:e.clientY,lastY:e.clientY,accum:0};
+  wheel.setPointerCapture?.(e.pointerId);
+});
+tbody.addEventListener('pointermove',e=>{
+  if(!wheelGesture)return;
+  const dy=wheelGesture.lastY-e.clientY;
+  wheelGesture.lastY=e.clientY;
+  wheelGesture.accum+=dy;
+  const ticks=Math.trunc(wheelGesture.accum/5);
+  if(ticks){
+    const row=editorRows[wheelGesture.index];
+    if(row)nudgeWheel(row,ticks>0?1:-1,Math.abs(ticks));
+    wheelGesture.accum-=ticks*5;
+  }
+});
+tbody.addEventListener('pointerup',()=>{wheelGesture=null;});
+tbody.addEventListener('pointercancel',()=>{wheelGesture=null;});
+tbody.addEventListener('keydown',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode||!['ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))return;
+  e.preventDefault();
+  const row=editorRows[Number(wheel.dataset.wheelIndex)];
+  if(row)nudgeWheel(row,e.key==='ArrowUp'||e.key==='PageUp'?-1:1,e.key==='PageUp'||e.key==='PageDown'?10:1);
+});
 
 /* ===== модал выбора ===== */
 const modalBack=document.getElementById('modalBack');
@@ -416,6 +458,30 @@ function editorStep(name,unit){
   if(isHundred(name)) return 0.1;
   if(/км/i.test(name)) return 1;
   return 1;
+}
+function wheelBounds(row){
+  const map=currentScales()[row.name]?.map||{};
+  const entries=Object.entries(map).map(([p,r])=>({points:Number(p),metric:resultMetric(row.name,row.unit,r)}))
+    .filter(x=>Number.isFinite(x.points)&&Number.isFinite(x.metric)&&x.points>=6&&x.points<=50)
+    .sort((a,b)=>a.points-b.points);
+  if(!entries.length) return {min:0,max:100,step:1};
+  const low=entries.reduce((best,x)=>Math.abs(x.points-6)<Math.abs(best.points-6)?x:best,entries[0]);
+  const high=entries.reduce((best,x)=>Math.abs(x.points-50)<Math.abs(best.points-50)?x:best,entries[entries.length-1]);
+  const a=Math.min(low.metric,high.metric),b=Math.max(low.metric,high.metric);
+  const step=(b-a)/44;
+  return {min:a,max:b,step:Math.max(step,editorStep(row.name,row.unit))};
+}
+function wheelNeighbor(row,direction){
+  const b=wheelBounds(row),v=Number(row.resultValue)||0;
+  const n=Math.max(b.min,Math.min(b.max,v+direction*b.step));
+  return formatEditorResult(row.name,row.unit,n);
+}
+function nudgeWheel(row,direction,amount=1){
+  const b=wheelBounds(row),v=Number(row.resultValue)||0;
+  const next=Math.max(b.min,Math.min(b.max,v+direction*b.step*amount));
+  row.resultValue=Math.round(next*1000)/1000;
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  renderRows(editorRows);
 }
 function formatEditorResult(name,unit,value){
   if(isMedball(name)) return Number(value).toFixed(2).replace('.',',');
