@@ -60,7 +60,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 .wheel-prev{top:0}.wheel-next{bottom:0}
 .wheel-current{position:absolute;left:0;right:0;top:23px;height:30px;line-height:30px;text-align:center;font-size:15px;font-weight:800;color:#0f172a;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-variant-numeric:tabular-nums;pointer-events:none}
 .editor-fieldset{margin-left:0}
-@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:10px}.top-controls .controls{gap:5px}.top-controls label.inline{gap:4px;font-size:13px}.editor-fieldset label.inline{font-size:13px}tbody td:nth-child(2){font-size:13.5px;line-height:1.25}}
+@media(max-width:520px){th,td{padding:8px 3px}.idcell{width:42px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:10px}.top-controls .controls{gap:5px}.top-controls label.inline{gap:4px;font-size:13px}.editor-fieldset label.inline{font-size:13px}tbody td:nth-child(2){font-size:13px;line-height:1.2}}
 
 /* Editor keypad */
 .editor-fieldset{padding:4px 7px}
@@ -83,14 +83,14 @@ tfoot td{background:#f8fafc;font-weight:600}
 .result-tap:active,.result-tap:focus{outline:none;border-color:#93c5fd;background:#eff6ff}
 @media(max-width:520px){.row.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:9px}.top-controls .controls{gap:4px}.top-controls label.inline{gap:3px;font-size:12px}.editor-fieldset label.inline{font-size:11px}}
 
-tbody td:nth-child(2){font-size:14px;line-height:1.25}.top-controls{gap:6px;align-items:center}.top-controls fieldset{padding:4px 7px}.top-controls .controls{gap:6px}.editor-fieldset{margin-left:0}
+tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;align-items:center}.top-controls fieldset{padding:4px 7px}.top-controls .controls{gap:6px}.editor-fieldset{margin-left:0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r32</div>
+    <div class="chip">Генератор оцінки · r33</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -111,6 +111,7 @@ tbody td:nth-child(2){font-size:14px;line-height:1.25}.top-controls{gap:6px;alig
       </div>
     </fieldset>
     <fieldset class="tight editor-fieldset">
+      <legend> </legend>
       <label class="inline"><input type="checkbox" id="editorToggle"><span>Редактор</span></label>
     </fieldset>
   </div>
@@ -134,7 +135,7 @@ tbody td:nth-child(2){font-size:14px;line-height:1.25}.top-controls{gap:6px;alig
 
   <div style="margin-top:12px">
     <table>
-      <thead><tr><th style="width:54px">№</th><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
+      <thead><tr><th style="width:42px">№</th><th>Вправа</th><th style="width:108px">Результат</th><th style="width:62px">Бал</th></tr></thead>
       <tbody id="tbody">
         <tr><td class="idcell"><span class="idpill">—</span></td><td>Метання медболу</td><td>—</td><td>—</td></tr>
         <tr><td class="idcell"><span class="idpill">2/14</span></td><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
@@ -196,7 +197,7 @@ tbody td:nth-child(2){font-size:14px;line-height:1.25}.top-controls{gap:6px;alig
 </div>
 
 <script>
-const VER='r32';
+const VER='r33';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -455,10 +456,17 @@ function openResultKeypad(index){
 }
 function keypadValue(row,digits){
   const n=parseInt(digits||'0',10)||0;
-  if(isMedball(row.name)) return n/100; // ввід сантиметрів: 125 -> 1,25 м
-  if(isHundred(row.name)) return n/10; // формат шкали: десяті секунди
-  if(/км/i.test(row.name)) return n; // секунды вводятся как MMSS below
+  if(isMedball(row.name)) return n/100; // 125 -> 1,25 м
+  if(isHundred(row.name)) return n/10; // 123 -> 12,3 с
+  if(/км/i.test(row.name)) return n; // MMSS -> секунды below
   return n;
+}
+function formatKeypadDigits(row,digits){
+  if(!digits) return '0';
+  if(isMedball(row.name)) return digits.length===1 ? digits : digits[0]+','+digits.slice(1);
+  if(/км/i.test(row.name)) return digits.length===1 ? digits+':' : digits[0]+':'+digits.slice(1);
+  if(isHundred(row.name)) return digits.length<3 ? digits : digits.slice(0,2)+','+digits.slice(2);
+  return digits;
 }
 function commitKeypad(){
   const row=editorRows[keypadIndex]; if(!row)return;
@@ -481,12 +489,15 @@ document.getElementById('keypadGrid').addEventListener('click',e=>{
   else if(b.dataset.action==='enter'){commitKeypad();return;}
   else if(b.dataset.digit!==undefined){
     if(keypadDigits.length>=3)return;
-    keypadDigits+=b.dataset.digit;
     const row=editorRows[keypadIndex];
+    const digit=b.dataset.digit;
+    // For 1 km, the second digit is the tens-of-seconds digit (0–5 only).
+    if(row&&/км/i.test(row.name)&&keypadDigits.length===1&&Number(digit)>5)return;
+    keypadDigits+=digit;
     if(row&&isThreeDigitExercise(row)&&keypadDigits.length===3){commitKeypad();return;}
     if(row&&!isThreeDigitExercise(row)&&keypadDigits.length===2){commitKeypad();return;}
   }
-  keypadDisplay.textContent=keypadDigits||'0';
+  keypadDisplay.textContent=formatKeypadDigits(editorRows[keypadIndex]||{name:''},keypadDigits);
 });
 tbody.addEventListener('click',e=>{
   const target=e.target.closest('[data-result-index]');
@@ -547,7 +558,7 @@ const selCount=document.getElementById('selCount');
 
 function editorStep(name,unit){
   if(isMedball(name)) return 0.05; // 5 см
-  if(isHundred(name)) return 1;
+  if(isHundred(name)) return 0.1; // 0,1 секунди
   if(/км/i.test(name)) return 1;
   return 1;
 }
@@ -580,13 +591,13 @@ function formatEditorResult(name,unit,value){
   if(isHundred(name)) return Number(value).toFixed(1).replace('.',',');
   if(/км/i.test(name)){
     const n=Math.max(0,Math.round(Number(value)||0));
-    return `${Math.floor(n/60)},${String(n%60).padStart(2,'0')}`;
+    return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;
   }
   return String(Math.round(Number(value)||0));
 }
 function resultMetric(name,unit,value){
   if(/км/i.test(name)){
-    const p=String(value).split(',').map(x=>parseInt(x,10));
+    const p=String(value).replace(':',',').split(',').map(x=>parseInt(x,10));
     return (p[0]||0)*60+(p[1]||0);
   }
   const n=Number(String(value).trim().replace(',','.'));
