@@ -59,8 +59,8 @@ tfoot td{background:#f8fafc;font-weight:600}
 .wheel-prev,.wheel-next{position:absolute;left:0;right:0;text-align:center;height:23px;line-height:23px;font-size:12px;color:#94a3b8;pointer-events:none;font-variant-numeric:tabular-nums}
 .wheel-prev{top:0}.wheel-next{bottom:0}
 .wheel-current{position:absolute;left:0;right:0;top:23px;height:30px;line-height:30px;text-align:center;font-size:15px;font-weight:800;color:#0f172a;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-variant-numeric:tabular-nums;pointer-events:none}
-.editor-fieldset{margin-left:auto}
-@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}.result-wheel{width:68px;height:72px;flex-basis:68px}.editor-fieldset{margin-left:auto}}
+.editor-fieldset{margin-left:0}
+@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:10px}.top-controls .controls{gap:5px}.top-controls label.inline{gap:4px;font-size:13px}.editor-fieldset label.inline{font-size:13px}tbody td:nth-child(2){font-size:13.5px;line-height:1.25}}
 
 /* Editor keypad */
 .editor-fieldset{padding:4px 7px}
@@ -79,17 +79,18 @@ tfoot td{background:#f8fafc;font-weight:600}
 .keypad-key.enter{background:#0f172a;color:#fff;border-color:#0f172a;font-size:14px}
 .keypad-key.clear{font-size:15px;color:#64748b}
 .keypad-hint{text-align:center;color:#64748b;font-size:11px;margin-top:12px}
-.result-tap{cursor:pointer;border-radius:8px;padding:4px 6px;min-width:58px;display:inline-block;border:1px solid transparent}
+.result-tap{cursor:pointer;border-radius:8px;padding:8px 6px;min-width:64px;display:inline-block;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;font:inherit;font-weight:750;text-align:center;min-height:38px}
 .result-tap:active,.result-tap:focus{outline:none;border-color:#93c5fd;background:#eff6ff}
 @media(max-width:520px){.row.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:9px}.top-controls .controls{gap:4px}.top-controls label.inline{gap:3px;font-size:12px}.editor-fieldset label.inline{font-size:11px}}
 
+tbody td:nth-child(2){font-size:14px;line-height:1.25}.top-controls{gap:6px;align-items:center}.top-controls fieldset{padding:4px 7px}.top-controls .controls{gap:6px}.editor-fieldset{margin-left:0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r31</div>
+    <div class="chip">Генератор оцінки · r32</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -195,7 +196,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 </div>
 
 <script>
-const VER='r31';
+const VER='r32';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -408,7 +409,7 @@ function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach((r,index)=>{
     const resultCell=editorMode
-      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><div class="result-wheel" data-wheel-index="${index}" role="slider" tabindex="0" aria-label="Колесо грубого налаштування"><span class="wheel-prev">${wheelNeighbor(r,-1)}</span><span class="wheel-current result-tap" data-result-index="${index}" tabindex="0" role="button" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</span><span class="wheel-next">${wheelNeighbor(r,1)}</span></div><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
+      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><button type="button" class="result-tap" data-result-index="${index}" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</button><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
       : r.result;
     const tr=document.createElement('tr');
     tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${resultCell}</td><td>${r.points}</td>`;
