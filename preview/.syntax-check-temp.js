@@ -1,0 +1,678 @@
+
+const VER='r31';
+const GROUPED='__GROUP_PULL_KSV__';
+let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
+let picked=[GROUPED];
+let editorRows=[];
+const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
+
+const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const stripQuotes = s => String(s??'').replace(/^\s*["'«»]+|["'«»]+\s*$/g,'').trim();
+const onlyNumber = s => { const m=String(s||'').match(/(\d+)/); return m?parseInt(m[1],10):0 };
+const toNumber = s => { const m=String(s||'').replace(/[^0-9-]/g,''); return m?parseInt(m,10):NaN; };
+
+function pickDelim(first){
+  if(first.includes('\t')) return '\t';
+  if(first.includes('\u0009')) return '\t';
+  if(first.includes(';')) return ';';
+  if(first.includes('|')) return '|';
+  if(first.includes(',')) return ',';
+  return '\t';
+}
+function parseCSVLine(line, delim){
+  if(delim==='\\t') delim = '\\t'.replace('\\\\t','\t');
+  const out=[]; let cur=''; let q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='\"'){ if(q && line[i+1]==='\"'){ cur+='\"'; i++; } else { q=!q; } }
+    else if(ch===delim && !q){ out.push(cur); cur=''; }
+    else{ cur+=ch; }
+  }
+  out.push(cur);
+  return out.map(c=>stripQuotes(c));
+}
+async function fetchText(url){
+  const full = url + `?v=${VER}&t=${Date.now()}`;
+  const r = await fetch(full, {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status+' @ '+url);
+  return r.text();
+}
+
+/* ========== ШКАЛЫ (Назва/Одиниця/Бал/Результат, опц. первый столбец — №) ========== */
+async function loadScales(url){
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  if(!lines.length) return {};
+  const delim=pickDelim(lines[0]);
+  const rows=lines.map(line=>parseCSVLine(line,delim));
+  const headerJoin = rows[0].join(' ').toLowerCase();
+  const hasHeader = /№|назва|одиниц|бал|результат/.test(headerJoin);
+  const data = hasHeader ? rows.slice(1) : rows;
+  const byName={};
+  for(const cols of data){
+    if(!cols.length) continue;
+    let id='', name='', unit='', pts='', res='';
+    const first=cols[0];
+    const looksLikeID = /^\d+[a-zа-я]?$/i.test(first); // поддержка 32б
+    if(looksLikeID && cols.length>=5){
+      [id,name,unit,pts,res]=[cols[0],cols[1],cols[2],cols[3],cols[4]];
+    }else{
+      [name,unit,pts,res]=[cols[0]||'',cols[1]||'',cols[2]||'',cols[3]||''];
+    }
+    name=stripQuotes(name);
+    if(!name) continue;
+    const points = parseInt(String(pts||'').replace(/\s/g,''),10);
+    if(!Number.isFinite(points)) continue;
+    if(!byName[name]) byName[name] = { id: (id||'—'), unit, map:{} };
+    byName[name].map[points] = stripQuotes(res);
+  }
+  return byName;
+}
+
+/* ========== ПОРОГИ (категория, вікова група, пороговий мінімум, суми для 3/4/5) ========== */
+function numericColStats(rows, ignoreIdx=new Set()){
+  const idxs=[...Array(rows[0].length).keys()].filter(i=>!ignoreIdx.has(i));
+  return idxs.map(i=>{
+    const nums = rows.slice(1).map(r=>toNumber(r[i])).filter(v=>Number.isFinite(v));
+    const sorted=[...nums].sort((a,b)=>a-b);
+    const median = sorted.length? sorted[Math.floor(sorted.length/2)] : -Infinity;
+    const avg = sorted.length? sorted.reduce((a,b)=>a+b,0)/sorted.length : -Infinity;
+    return {i, count:nums.length, median, avg};
+  });
+}
+async function loadThresholds(url){
+  const txt=(await fetchText(url)).replace(/^\uFEFF/,'');
+  const lines=txt.split(/\r?\n/).filter(x=>x.trim().length);
+  if(!lines.length) return [];
+  const delim=pickDelim(lines[0]);
+  const rows=lines.map(line=>parseCSVLine(line,delim));
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
+  const idx = name => headers.findIndex(h=>h===name);
+
+  const iAge = (()=> {
+    const keys=['вік','вікова група','возрастная группа','age_group','група','группа'];
+    for(const k of keys){ const j=headers.findIndex(h=>h.includes(k)); if(j>=0) return j; }
+    return -1;
+  })();
+  const iCat = (()=> {
+    const keys=['категорія','категория','category'];
+    for(const k of keys){ const j=headers.findIndex(h=>h.includes(k)); if(j>=0) return j; }
+    return -1;
+  })();
+  const iMin = (()=> {
+    const keys=['пороговий мінімум','пороговый минимум','min_per_exercise'];
+    for(const k of keys){ const j=headers.findIndex(h=>h.includes(k)); if(j>=0) return j; }
+    return -1;
+  })();
+
+  const findSumCol = (digit) => {
+    let i = headers.findIndex(h => /з|із|из/.test(h) && /вправ|упраж/.test(h) && new RegExp(`${digit}\\b`).test(h));
+    if (i<0) i = headers.findIndex(h => /sum_for_grade_\d+/.test(h) && h.endsWith(String(digit)));
+    if (i<0) {
+      return -1;
+    }
+    return i;
+  };
+  let iS3 = findSumCol(3);
+  let iS4 = findSumCol(4);
+  let iS5 = findSumCol(5);
+
+  if(iS3<0 || iS4<0 || iS5<0){
+    const ignore = new Set([iAge, iCat, iMin].filter(i=>i>=0));
+    const stats = numericColStats(rows, ignore).filter(s=>s.count>=Math.max(2, Math.floor((rows.length-1)*0.5)));
+    const top = stats.sort((a,b)=>b.median-a.median).slice(0,5).sort((a,b)=>a.median-b.median);
+    if(top.length>=3){ iS3 = top[0].i; iS4 = top[1].i; iS5 = top[2].i; }
+  }
+
+  return rows.slice(1).map(c=>{
+    const get=(i)=> (i>=0 && i<c.length)? stripQuotes(c[i]) : '';
+    return {
+      age_group: get(iAge),
+      category: (get(iCat)||'').replace(/[\s\u00A0]/g,'').replace(/[,;]+/g,','),
+      min_per_exercise: get(iMin),
+      sum_for_grade_3: get(iS3),
+      sum_for_grade_4: get(iS4),
+      sum_for_grade_5: get(iS5),
+    };
+  });
+}
+
+/* ===== список упражнений из шкал (муж/жен) ===== */
+function namesFrom(scales){ try{ return Object.keys(scales||{}); }catch{ return []; } }
+function findBy(names, re){ re = (re instanceof RegExp)? re : new RegExp(re,'i'); return names.find(n=>re.test(n)); }
+function computeChoices(){
+  const scales = (sex==='M'?state.scales.M:state.scales.J)||{};
+  const names = namesFrom(scales);
+  state.choices = names;
+  const warn = document.getElementById('warnBox');
+  if(!names.length){ warn.classList.remove('hidden'); } else { warn.classList.add('hidden'); }
+  const med   = findBy(names, /медбол/i);
+  const func  = findBy(names, /функц|витривал/i);
+  const pull  = findBy(names, /підтяг|подтяг/i);
+  const ksv   = findBy(names, /комплексн.*силов/i);
+  const first = med || names[0] || '—';
+  const second= func || names.find(n=>n!==first) || first;
+  picked = [ first, (pull||ksv)? GROUPED : (pull||ksv), second ].filter(Boolean).slice(0,3);
+}
+
+/* ===== загрузка всех CSV ===== */
+async function loadAll(){
+  const dataState=document.getElementById('dataState');
+  try{
+    const [thM, thW, scM, scW] = await Promise.allSettled([
+      loadThresholds('./data/thresholds_men.csv'),
+      loadThresholds('./data/thresholds_women.csv'),
+      loadScales('./data/scales_men.csv'),
+      loadScales('./data/scales_women.csv'),
+    ]);
+    state.thresholds.M = thM.status==='fulfilled' ? thM.value : [];
+    state.thresholds.J = thW.status==='fulfilled' ? thW.value : [];
+    state.scales.M = scM.status==='fulfilled' ? scM.value : {};
+    state.scales.J = scW.status==='fulfilled' ? scW.value : {};
+    state.ready = true;
+    const mCount=Object.keys(state.scales.M||{}).length, wCount=Object.keys(state.scales.J||{}).length;
+    dataState.textContent = `OK: М(${mCount}) Ж(${wCount})`;
+    computeChoices();
+    renderPicked();
+    buildCards();
+    document.getElementById('genBtn').disabled=false;
+    document.getElementById('loadBox').classList.add('hidden');
+  }catch(e){
+    dataState.textContent='Помилка завантаження';
+    document.getElementById('loadBox').textContent='Помилка CSV: '+e.message;
+    console.error(e);
+  }
+}
+
+/* ===== UI: возрастные чекбоксы 1–7 ===== */
+const ageGrid = document.getElementById('ageGrid');
+for(let g=1;g<=7;g++){
+  const lab=document.createElement('label'); lab.className='inline';
+  const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);updateEditorSummary();});
+  lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
+}
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;updateEditorSummary();}));
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;computeChoices();editorRows=[];renderPicked();buildCards();}));
+document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));
+
+const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
+function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
+function initializeEditorRows(){
+  const scales=currentScales();
+  const names=picked.map(n=>n===GROUPED?choosePullOrKsv(scales):n);
+  editorRows=names.map(n=>{
+    const info=scales[n]||{id:'—',unit:'',map:{}};
+    return {name:n,displayName:n||'—',badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
+  });
+  updateEditorSummary();
+}
+function renderRows(rows){
+  tbody.innerHTML='';
+  rows.forEach((r,index)=>{
+    const resultCell=editorMode
+      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><div class="result-wheel" data-wheel-index="${index}" role="slider" tabindex="0" aria-label="Колесо грубого налаштування"><span class="wheel-prev">${wheelNeighbor(r,-1)}</span><span class="wheel-current result-tap" data-result-index="${index}" tabindex="0" role="button" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</span><span class="wheel-next">${wheelNeighbor(r,1)}</span></div><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
+      : r.result;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${resultCell}</td><td>${r.points}</td>`;
+    tbody.appendChild(tr);
+  });
+  const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
+  sumEl.textContent=total;
+  if(editorMode) updateEditorSummary(total);
+}
+function renderPicked(){
+  if(editorMode){initializeEditorRows();renderRows(editorRows);return;}
+  const scales=currentScales();
+  const rows=picked.map(n=>{
+    if(n===GROUPED) return {name:n,displayName:'Підтягування / КСВ',result:'—',points:'—',badge:(sex==='M'?'2/14':'2/14а')};
+    const info=scales[n],badge=info?String(info.id||'—'):'—';
+    return {name:n,displayName:n,result:'—',points:'—',badge};
+  });
+  renderRows(rows);
+}
+document.getElementById('editorToggle').addEventListener('change',e=>{
+  editorMode=e.target.checked;
+  document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
+  document.getElementById('genBtn').classList.toggle('hidden',editorMode);
+  document.getElementById('assessmentRow').classList.toggle('hidden',!editorMode);
+  if(editorMode) initializeEditorRows();
+  renderCurrentRows();
+});
+function renderCurrentRows(){if(editorMode)renderRows(editorRows);else renderPicked();}
+
+const keypadBack=document.getElementById('keypadBack');
+const keypadDisplay=document.getElementById('keypadDisplay');
+const keypadExercise=document.getElementById('keypadExercise');
+const keypadHint=document.getElementById('keypadHint');
+let keypadIndex=-1,keypadDigits='';
+function isThreeDigitExercise(row){return /функц|витривал|100\s*м|медбол|1\s*км|кілометр|километр/i.test(row.name);}
+function openResultKeypad(index){
+  const row=editorRows[index]; if(!row)return;
+  keypadIndex=index; keypadDigits='';
+  keypadExercise.textContent=row.displayName;
+  keypadDisplay.textContent='0';
+  keypadHint.textContent=isThreeDigitExercise(row)?'Введіть цифри — результат збережеться автоматично':'1–2 цифри; ENTER підтверджує результат';
+  keypadBack.classList.add('open');
+}
+function keypadValue(row,digits){
+  const n=parseInt(digits||'0',10)||0;
+  if(isMedball(row.name)) return n/100; // ввід сантиметрів: 125 -> 1,25 м
+  if(isHundred(row.name)) return n/10; // формат шкали: десяті секунди
+  if(/км/i.test(row.name)) return n; // секунды вводятся как MMSS below
+  return n;
+}
+function commitKeypad(){
+  const row=editorRows[keypadIndex]; if(!row)return;
+  let v;
+  if(isMedball(row.name)) v=keypadValue(row,keypadDigits);
+  else if(isHundred(row.name)) v=keypadValue(row,keypadDigits);
+  else if(/км/i.test(row.name)){
+    const digits=(keypadDigits||'0').padStart(3,'0');
+    v=parseInt(digits.slice(0,-2),10)*60+parseInt(digits.slice(-2),10);
+  } else v=parseInt(keypadDigits||'0',10)||0;
+  row.resultValue=Math.max(0,Math.round(v*1000)/1000);
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  keypadBack.classList.remove('open'); renderRows(editorRows);
+}
+document.getElementById('keypadClose').addEventListener('click',()=>keypadBack.classList.remove('open'));
+keypadBack.addEventListener('click',e=>{if(e.target===keypadBack)keypadBack.classList.remove('open');});
+document.getElementById('keypadGrid').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  if(b.dataset.action==='clear'){keypadDigits=keypadDigits.slice(0,-1);}
+  else if(b.dataset.action==='enter'){commitKeypad();return;}
+  else if(b.dataset.digit!==undefined){
+    if(keypadDigits.length>=3)return;
+    keypadDigits+=b.dataset.digit;
+    const row=editorRows[keypadIndex];
+    if(row&&isThreeDigitExercise(row)&&keypadDigits.length===3){commitKeypad();return;}
+    if(row&&!isThreeDigitExercise(row)&&keypadDigits.length===2){commitKeypad();return;}
+  }
+  keypadDisplay.textContent=keypadDigits||'0';
+});
+tbody.addEventListener('click',e=>{
+  const target=e.target.closest('[data-result-index]');
+  if(target&&editorMode){openResultKeypad(Number(target.dataset.resultIndex));return;}
+
+  const btn=e.target.closest('[data-spin]');
+  if(!btn||!editorMode)return;
+  const row=editorRows[Number(btn.dataset.index)];
+  if(!row)return;
+  const step=editorStep(row.name,row.unit);
+  row.resultValue=Math.max(0,Math.round((row.resultValue+Number(btn.dataset.spin)*step)*1000)/1000);
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  renderRows(editorRows);
+});
+let wheelGesture=null;
+tbody.addEventListener('wheel',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode)return;
+  e.preventDefault();
+  const row=editorRows[Number(wheel.dataset.wheelIndex)];
+  if(row)nudgeWheel(row,e.deltaY>0?1:-1,Math.max(1,Math.min(4,Math.round(Math.abs(e.deltaY)/45))));
+},{passive:false});
+tbody.addEventListener('pointerdown',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode)return;
+  wheelGesture={index:Number(wheel.dataset.wheelIndex),startY:e.clientY,lastY:e.clientY,accum:0};
+  tbody.setPointerCapture?.(e.pointerId);
+});
+tbody.addEventListener('pointermove',e=>{
+  if(!wheelGesture)return;
+  const dy=wheelGesture.lastY-e.clientY;
+  wheelGesture.lastY=e.clientY;
+  wheelGesture.accum+=dy;
+  const ticks=Math.trunc(wheelGesture.accum/5);
+  if(ticks){
+    const row=editorRows[wheelGesture.index];
+    if(row)nudgeWheel(row,ticks>0?1:-1,Math.abs(ticks));
+    wheelGesture.accum-=ticks*5;
+  }
+});
+tbody.addEventListener('pointerup',()=>{wheelGesture=null;});
+tbody.addEventListener('pointercancel',()=>{wheelGesture=null;});
+tbody.addEventListener('keydown',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode||!['ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))return;
+  e.preventDefault();
+  const row=editorRows[Number(wheel.dataset.wheelIndex)];
+  if(row)nudgeWheel(row,e.key==='ArrowUp'||e.key==='PageUp'?-1:1,e.key==='PageUp'||e.key==='PageDown'?10:1);
+});
+
+/* ===== модал выбора ===== */
+const modalBack=document.getElementById('modalBack');
+const editBtn=document.getElementById('editBtn');
+const closeModal=document.getElementById('closeModal');
+const applySel=document.getElementById('applySel');
+const cardList=document.getElementById('cardList');
+const selCount=document.getElementById('selCount');
+
+function editorStep(name,unit){
+  if(isMedball(name)) return 0.05; // 5 см
+  if(isHundred(name)) return 1;
+  if(/км/i.test(name)) return 1;
+  return 1;
+}
+function wheelBounds(row){
+  const map=currentScales()[row.name]?.map||{};
+  const entries=Object.entries(map).map(([p,r])=>({points:Number(p),metric:resultMetric(row.name,row.unit,r)}))
+    .filter(x=>Number.isFinite(x.points)&&Number.isFinite(x.metric)&&x.points>=6&&x.points<=50)
+    .sort((a,b)=>a.points-b.points);
+  if(!entries.length) return {min:0,max:100,step:1};
+  const low=entries.reduce((best,x)=>Math.abs(x.points-6)<Math.abs(best.points-6)?x:best,entries[0]);
+  const high=entries.reduce((best,x)=>Math.abs(x.points-50)<Math.abs(best.points-50)?x:best,entries[entries.length-1]);
+  const a=Math.min(low.metric,high.metric),b=Math.max(low.metric,high.metric);
+  const step=(b-a)/44;
+  return {min:a,max:b,step:Math.max(step,0.001)};
+}
+function wheelNeighbor(row,direction){
+  const b=wheelBounds(row),v=Number(row.resultValue)||0;
+  const n=Math.max(b.min,Math.min(b.max,v+direction*b.step));
+  return formatEditorResult(row.name,row.unit,n);
+}
+function nudgeWheel(row,direction,amount=1){
+  const b=wheelBounds(row),v=Number(row.resultValue)||0;
+  const next=Math.max(b.min,Math.min(b.max,v+direction*b.step*amount));
+  row.resultValue=Math.round(next*1000)/1000;
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  renderRows(editorRows);
+}
+function formatEditorResult(name,unit,value){
+  if(isMedball(name)) return Number(value).toFixed(2).replace('.',',');
+  if(isHundred(name)) return Number(value).toFixed(1).replace('.',',');
+  if(/км/i.test(name)){
+    const n=Math.max(0,Math.round(Number(value)||0));
+    return `${Math.floor(n/60)},${String(n%60).padStart(2,'0')}`;
+  }
+  return String(Math.round(Number(value)||0));
+}
+function resultMetric(name,unit,value){
+  if(/км/i.test(name)){
+    const p=String(value).split(',').map(x=>parseInt(x,10));
+    return (p[0]||0)*60+(p[1]||0);
+  }
+  const n=Number(String(value).trim().replace(',','.'));
+  return Number.isFinite(n)?n:NaN;
+}
+function scoreForResult(name,unit,value,map){
+  const achieved=Number(value)||0;
+  if(achieved<=0) return 0;
+  const entries=Object.entries(map||{}).map(([p,r])=>({points:Number(p),result:stripQuotes(r)}))
+    .filter(x=>Number.isFinite(x.points)&&x.result&&x.result!=='-'&&x.result!=='—')
+    .map(x=>({...x,metric:resultMetric(name,unit,x.result)}))
+    .filter(x=>Number.isFinite(x.metric));
+  if(!entries.length) return 0;
+  const lower=isLowerBetter(name,unit);
+  const eligible=entries.filter(x=>lower?achieved<=x.metric:achieved>=x.metric);
+  return eligible.length?Math.max(...eligible.map(x=>x.points)):0;
+}
+function updateEditorSummary(total){
+  if(!editorMode) return;
+  const sum=Number.isFinite(total)?total:editorRows.reduce((a,r)=>a+(Number(r.points)||0),0);
+  sumEl.textContent=sum;
+  const th=activeThreshold();
+  if(!th){assessmentEl.textContent='Немає нормативу';return;}
+  const minPer=onlyNumber(th.min_per_exercise);
+  const s3=onlyNumber(th.sum_for_grade_3),s4=onlyNumber(th.sum_for_grade_4),s5=onlyNumber(th.sum_for_grade_5);
+  const below=editorRows.some(r=>(Number(r.points)||0)<minPer);
+  const resultGrade=below?2:(sum>=s5?5:sum>=s4?4:sum>=s3?3:2);
+  assessmentEl.textContent=String(resultGrade)+(below?' — нижче порогового мінімуму':'');
+}
+function buildCards(){
+  cardList.innerHTML='';
+  let temp=[...picked];
+  const all = state.choices || [];
+  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || /комплексн.*силов/i.test(n)));
+
+  const hasPull = all.some(n=>/підтяг|подтяг/i.test(n));
+  const hasKsv  = all.some(n=>/комплексн.*силов/i.test(n));
+  if(hasPull||hasKsv){
+    const div=document.createElement('div');
+    div.className='card'+(temp.includes(GROUPED)?' sel':'');
+    div.textContent='Підтягування / КСВ';
+    div.addEventListener('click',()=>{
+      const i=temp.indexOf(GROUPED);
+      if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(GROUPED); }
+      picked=[...temp]; buildCards();
+    });
+    cardList.appendChild(div);
+  }
+  if(!names.length){
+    const msg=document.createElement('div');
+    msg.className='muted';
+    msg.textContent='Список вправ порожній — перевір CSV.';
+    cardList.appendChild(msg);
+  }else{
+    names.forEach(name=>{
+      const div=document.createElement('div');
+      div.className='card'+(temp.includes(name)?' sel':'');
+      div.textContent = name;
+      div.addEventListener('click',()=>{
+        const i=temp.indexOf(name);
+        if(i>=0) temp.splice(i,1); else { if(temp.length>=3) return; temp.push(name); }
+        picked=[...temp]; buildCards();
+      });
+      cardList.appendChild(div);
+    });
+  }
+  selCount.textContent=`Обрано: ${picked.length}/3`;
+  applySel.disabled=(picked.length!==3);
+}
+editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
+closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
+applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
+
+/* ===== вспомогательные для результатов ===== */
+function formatDecComma(x, decs){ return x.toFixed(decs).replace('.',','); }
+function parseMinSec_csv(s){ const [m,sec]=String(s).split(',').map(x=>parseInt(x,10)); return {total: (m||0)*60 + (sec||0)}; }
+function toMinSec_csv(total){ total=Math.max(0,total|0); const m=Math.floor(total/60), s=total%60; return `${m},${String(s).padStart(2,'0')}`; }
+function isLowerBetter(name, unit){ const u=(unit||'').toLowerCase(), n=(name||'').toLowerCase(); if(u.includes('с')||u.includes('хв')) return true; if(n.includes('біг')||n.includes('бег')) return true; return false; }
+function isReps(unit){ return /раз|рази/i.test(unit); }
+function isMeters(unit){ return /\bм\b/i.test(unit); }
+function isMedball(name){ return /медбол/i.test(name); }
+function isEndurance(name){ return /витривал/i.test(name); }
+function isHundred(name){ return /100\s*м/i.test(name); }
+
+/* ===== варьирование результата внутри балла (общая логика для М и Ж) ===== */
+function variedResult(name, unit, pts, map){
+  const base = stripQuotes(map[pts]);
+  if(!base) return null;
+  const next = map[pts+1];
+  if(!next) return base;
+
+  // Функциональная выносливость измеряется в метрах у мужчин и женщин.
+  // Между соседними баллами генерируем любое целое число метров.
+  if(isEndurance(name)){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo=Math.min(a,b)+1, hi=Math.max(a,b);
+    if(hi<lo) return String(a);
+    return String(randint(lo,hi));
+  }
+
+  const betterIsLower = isLowerBetter(name, unit);
+
+  // 1 км: минуты,секунды → рандом секунды
+  if(/км/i.test(name) || /хв/i.test(unit)){
+    const a=parseMinSec_csv(base).total, b=parseMinSec_csv(stripQuotes(next)).total;
+    const lo = betterIsLower ? b : a;
+    const hi = betterIsLower ? a : b;
+    if(hi<=lo) return base;
+    return toMinSec_csv(randint(lo,hi-1));
+  }
+
+  // 100 м: шаг 0.1 с
+  if(isHundred(name)){
+    const a = parseFloat(String(base).replace(',','.'));
+    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    let from,to;
+    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+    if(to<=from) return base;
+    const step=0.1;
+    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=randint(kFrom,kTo);
+    return formatDecComma(k*step, 1);
+  }
+
+  // Медбол: шаг 0.05 м
+  if(isMedball(name)){
+    const a = parseFloat(String(base).replace(',','.'));
+    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    let from,to;
+    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
+    if(to<=from) return base;
+    const step=0.05;
+    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
+    if(kTo<kFrom) return base;
+    const k=randint(kFrom,kTo);
+    return formatDecComma(k*step, 2);
+  }
+
+  // Целые метры для остальных упражнений с единицей «м»
+  if(isMeters(unit)){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo=Math.min(a,b)+1, hi=Math.max(a,b);
+    if(hi<lo) return String(a);
+    return String(randint(lo,hi));
+  }
+
+  // Повторы
+  if(isReps(unit)){
+    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
+    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
+    const lo = betterIsLower ? Math.min(a,b)+1 : Math.min(a,b);
+    const hi = betterIsLower ? Math.max(a,b) : Math.max(a,b)-1;
+    if(hi<lo) return base;
+    return String(randint(lo,hi));
+  }
+
+  return base;
+}
+/* ===== выбор подтягивания/КСВ 80/20 ===== */
+function choosePullOrKsv(scales){
+  const names = Object.keys(scales);
+  const pull = names.find(n=>/підтяг|подтяг/i.test(n));
+  const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
+  if(!pull && !ksv) return null;
+  return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
+}
+
+/* ===== активная строка порогов по категории/группе ===== */
+function activeThreshold(){
+  const list=(sex==='M'?state.thresholds.M:state.thresholds.J);
+  if(!list || !list.length) return null;
+  // Category 2 uses category 2 rows; category 3 uses category 3 or 4 rows.
+  // Do not fall back to category 1 when a matching row is missing.
+  const allowedCats = category==='3' ? new Set(['3','4']) : new Set(['2']);
+  let best=null,bestDiff=1e9;
+  for(const r of list){
+    const cat=String(r.category||'').replace(/[\s\u00A0]/g,'');
+    if(!allowedCats.has(cat)) continue;
+    const g=parseInt(r.age_group,10); if(!Number.isFinite(g)) continue;
+    const d=Math.abs(g-ageGroup);
+    if(d<bestDiff){best=r;bestDiff=d;}
+  }
+  return best;
+}
+
+/* ===== вероятностные выборки для суммарного балла ===== */
+function sampleSkewed(minSum, nextSum){
+  const x=Math.max(1,nextSum-minSum);
+  const r=Math.random();
+  let lo=minSum, hi=minSum+Math.floor(0.3*x);
+  if(r>=0.8 && r<0.95){ lo=minSum+Math.floor(0.3*x); hi=minSum+Math.floor(0.5*x); }
+  else if(r>=0.95){ lo=minSum+Math.floor(0.5*x); hi=minSum+Math.floor(0.7*x); }
+  hi=Math.min(hi,nextSum-1);
+  if(hi<lo) hi=lo;
+  return randint(lo,hi);
+}
+function randn(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function sampleTruncNormal(a,b,mean,sd){
+  for(let i=0;i<16;i++){
+    const x = mean + sd*randn();
+    if(x>=a && x<=b) return Math.round(x);
+  }
+  return randint(Math.ceil(a), Math.floor(b));
+}
+
+/* ===== генерация одного решения ===== */
+function generateOnce(){
+  const th=activeThreshold()||{min_per_exercise:'10',sum_for_grade_3:'60',sum_for_grade_4:'80',sum_for_grade_5:'95'};
+  const minPer=onlyNumber(th.min_per_exercise);
+  let s3=onlyNumber(th.sum_for_grade_3), s4=onlyNumber(th.sum_for_grade_4), s5=onlyNumber(th.sum_for_grade_5);
+
+  // страховки, если в CSV есть дыры
+  if(!s3 && s4){ s3=Math.max(1, Math.round(s4*0.8)); }
+  if(!s4 && s5){ s4=Math.max(s3+1, Math.round(s5*0.9)); }
+  if(!s5 && s4){ s5=Math.max(s4+1, Math.round(s4*1.1)); }
+
+  let minSum,nextSum,target;
+  if(grade===5){
+    minSum=s5; nextSum=s5 + Math.max(2, Math.round(0.1*s5));
+    target=sampleSkewed(minSum,nextSum);
+  } else if(grade===4){
+    minSum=s4; nextSum=Math.max(s4+1, s5||s4+10);
+    target=sampleSkewed(minSum,nextSum);
+  } else if(grade===3){
+    // строго между s3 и ниже s4, с перекосом к минимуму (80/15/5)
+    minSum=s3; nextSum=Math.max(s3+1, s4||s3+10);
+    target=sampleSkewed(minSum,nextSum);
+  } else { // grade===2
+    // строго ниже порога "3", диапазон 30% от s3, перекос к верхней границе
+    const hi = Math.max(0, s3-1);
+    const lo = Math.max(0, Math.ceil(s3 - 0.3*s3));
+    const mean = hi - (hi-lo)*0.2;
+    const sd = (hi-lo)/6 || 1;
+    target = clamp(sampleTruncNormal(lo, hi, mean, sd), lo, hi);
+  }
+
+  const scales = (sex==='M'?state.scales.M:state.scales.J) || {};
+  let names = picked.map(n=> n===GROUPED ? choosePullOrKsv(scales) : n);
+  if(names.includes(null)) return null;
+  for(const n of names){ if(!scales[n]) return null; }
+
+  const allowed = names.map(n => Object.keys(scales[n].map).map(x=>parseInt(x,10)).filter(v=>v>=minPer).sort((a,b)=>b-a));
+  const meanPts=target/3; const devMax=(Math.random()<0.8?0.30:0.40)*meanPts;
+  const loPts=Math.max(minPer,Math.floor(meanPts-devMax)); const hiPts=Math.ceil(meanPts+devMax);
+
+  const resFor = (n,pts) => {
+    const s=scales[n]; if(!s) return null;
+    const base = s.map[pts]; if(!base || base==='-' || base==='—') return null;
+    const v = variedResult(n, s.unit, pts, s.map);
+    return v||base;
+  };
+
+  for(let tries=0; tries<15000; tries++){
+    const c1=allowed[0].filter(v=>v>=loPts&&v<=hiPts);
+    const c2=allowed[1].filter(v=>v>=loPts&&v<=hiPts);
+    if(!c1.length||!c2.length) break;
+    const v1=c1[Math.floor(Math.random()*c1.length)];
+    const v2=c2[Math.floor(Math.random()*c2.length)];
+    const v3=target-v1-v2; if(v3<loPts||v3>hiPts) continue; if(!allowed[2].includes(v3)) continue;
+    const r1=resFor(names[0],v1), r2=resFor(names[1],v2), r3=resFor(names[2],v3);
+    if(!r1||!r2||!r3) continue;
+    return [
+      {name:names[0], displayName:names[0], points:v1, result:r1, badge:(scales[names[0]].id||'—')},
+      {name:names[1], displayName:names[1], points:v2, result:r2, badge:(scales[names[1]].id||'—')},
+      {name:names[2], displayName:names[2], points:v3, result:r3, badge:(scales[names[2]].id||'—')},
+    ];
+  }
+  return null;
+}
+function generate(){
+  if(!state.ready){ return; }
+  let solution=null;
+  for(let attempt=0; attempt<100 && !solution; attempt++){
+    solution = generateOnce();
+  }
+  if(solution){ renderRows(solution); }
+}
+
+/* запуск */
+document.getElementById('genBtn').addEventListener('click',generate);
+loadAll();
