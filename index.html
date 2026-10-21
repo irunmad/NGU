@@ -47,24 +47,56 @@ tfoot td{background:#f8fafc;font-weight:600}
 .card.sel{background:#ecfdf5;border-color:#34d399}
 .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .hidden{display:none}
+.assessment-tools{display:flex;align-items:center;justify-content:flex-start;gap:18px;flex-wrap:wrap}.count-field{margin:0;padding:3px 8px 5px;min-width:130px}.count-field legend{font-size:11px;padding:0 4px}.count-field .controls{gap:10px}.count-field label.inline{gap:4px;font-size:13px}.exercise-pick{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;font:inherit;line-height:1.2;padding:2px 0;cursor:pointer}.exercise-pick:after{content:" ✎";font-size:11px;color:#64748b}.card.disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9;border-color:#cbd5e1}.card.current{outline:2px solid #34d399;outline-offset:1px}
 .warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
-.result-spinner{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
+.result-spinner{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}
 .spin-btn{border:1px solid var(--br);background:#f8fafc;border-radius:8px;width:30px;height:38px;font-size:20px;font-weight:700;line-height:1;flex:0 0 30px;padding:0;cursor:pointer}
 .spin-value{display:inline-block;min-width:48px;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
-@media(max-width:520px){th,td{padding:8px 4px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}}
+.result-wheel{position:relative;width:76px;height:76px;flex:0 0 76px;overflow:hidden;border:1px solid #cbd5e1;border-radius:14px;background:linear-gradient(180deg,#e2e8f0 0%,#fff 34%,#fff 66%,#e2e8f0 100%);touch-action:none;user-select:none;cursor:ns-resize;box-shadow:inset 0 0 8px #cbd5e1}
+.result-wheel:before,.result-wheel:after{content:"";position:absolute;left:0;right:0;height:22px;z-index:2;pointer-events:none}
+.result-wheel:before{top:0;background:linear-gradient(#e2e8f0,transparent)}
+.result-wheel:after{bottom:0;background:linear-gradient(transparent,#e2e8f0)}
+.wheel-prev,.wheel-next{position:absolute;left:0;right:0;text-align:center;height:23px;line-height:23px;font-size:12px;color:#94a3b8;pointer-events:none;font-variant-numeric:tabular-nums}
+.wheel-prev{top:0}.wheel-next{bottom:0}
+.wheel-current{position:absolute;left:0;right:0;top:23px;height:30px;line-height:30px;text-align:center;font-size:15px;font-weight:800;color:#0f172a;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;font-variant-numeric:tabular-nums;pointer-events:none}
+.editor-fieldset{margin-left:0}
+@media(max-width:520px){th,td{padding:8px 3px}.idcell{width:42px}.spin-btn{width:25px;flex-basis:25px}.spin-value{min-width:42px}.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:10px}.top-controls .controls{gap:5px}.top-controls label.inline{gap:4px;font-size:13px}.editor-fieldset label.inline{font-size:13px}tbody td:nth-child(2){font-size:13px;line-height:1.2}}
+
+/* Editor keypad */
+.editor-fieldset{padding:4px 7px}
+.editor-fieldset label.inline{font-size:12px;gap:4px}
+.controls{gap:7px}
+.top-controls fieldset{padding:4px 7px}
+.top-controls legend{font-size:10px}
+.keypad-back{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:18px;z-index:1000}
+.keypad-back.open{display:flex}
+.keypad{width:min(320px,100%);background:#fff;border-radius:24px;padding:18px;box-shadow:0 24px 80px #0f172a55;border:1px solid #dbeafe}
+.keypad-head{display:flex;align-items:center;justify-content:space-between;color:#64748b;font-size:13px;margin-bottom:8px}
+.keypad-display{background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid #dbeafe;border-radius:15px;min-height:66px;display:flex;align-items:center;justify-content:flex-end;padding:10px 16px;font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;margin-bottom:14px;color:#0f172a}
+.keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.keypad-key{height:54px;border:1px solid #dbe3ef;border-radius:14px;background:#f8fafc;font-size:22px;font-weight:700;color:#1e293b;box-shadow:0 2px 0 #e2e8f0}
+.keypad-key:active{transform:scale(.97);background:#dbeafe}
+.keypad-key.enter{background:#0f172a;color:#fff;border-color:#0f172a;font-size:14px}
+.keypad-key.clear{font-size:15px;color:#64748b}
+.keypad-hint{text-align:center;color:#64748b;font-size:11px;margin-top:12px}
+.result-tap{cursor:pointer;border-radius:8px;padding:8px 6px;min-width:64px;display:inline-block;border:1px solid #cbd5e1;background:#f8fafc;color:#0f172a;font:inherit;font-weight:750;text-align:center;min-height:38px}
+.result-tap:active,.result-tap:focus{outline:none;border-color:#93c5fd;background:#eff6ff}
+@media(max-width:520px){.row.top-controls{gap:5px}.top-controls fieldset{padding:3px 5px}.top-controls legend{font-size:9px}.top-controls .controls{gap:4px}.top-controls label.inline{gap:3px;font-size:12px}.editor-fieldset label.inline{font-size:11px}}
+
+tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;align-items:center}.top-controls fieldset{padding:4px 7px}.top-controls .controls{gap:6px}.editor-fieldset{margin-left:0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r30</div>
+    <div class="chip">Генератор оцінки · r34</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
   <!-- Категория и пол — в одной строке, но отдельные блоки -->
-  <div class="row">
+  <div class="row top-controls">
     <fieldset class="tight">
       <legend>Категорія</legend>
       <div class="controls">
@@ -79,8 +111,8 @@ tfoot td{background:#f8fafc;font-weight:600}
         <label class="inline"><input type="radio" name="sex" value="J"><span>Ж</span></label>
       </div>
     </fieldset>
-    <fieldset class="tight">
-      <legend>Режим</legend>
+    <fieldset class="tight editor-fieldset">
+      <legend> </legend>
       <label class="inline"><input type="checkbox" id="editorToggle"><span>Редактор</span></label>
     </fieldset>
   </div>
@@ -104,7 +136,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 
   <div style="margin-top:12px">
     <table>
-      <thead><tr><th style="width:54px">№</th><th>Вправа</th><th>Результат</th><th style="width:120px">Бал</th></tr></thead>
+      <thead><tr><th style="width:42px">№</th><th>Вправа</th><th style="width:108px">Результат</th><th style="width:62px">Бал</th></tr></thead>
       <tbody id="tbody">
         <tr><td class="idcell"><span class="idpill">—</span></td><td>Метання медболу</td><td>—</td><td>—</td></tr>
         <tr><td class="idcell"><span class="idpill">2/14</span></td><td>Підтягування / КСВ</td><td>—</td><td>—</td></tr>
@@ -112,7 +144,7 @@ tfoot td{background:#f8fafc;font-weight:600}
       </tbody>
       <tfoot>
         <tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr>
-        <tr id="assessmentRow" class="hidden"><td></td><td>Оцінка</td><td colspan="2" id="assessment">—</td></tr>
+        <tr id="assessmentRow" class="hidden"><td></td><td>Оцінка</td><td colspan="2"><div class="assessment-tools"><strong id="assessment">—</strong><fieldset id="exerciseCountField" class="count-field"><legend>К-ть вправ</legend><div class="controls"><label class="inline"><input type="checkbox" name="exerciseCount" value="3" checked><span>3</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="4"><span>4</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="5"><span>5</span></label></div></fieldset></div></td></tr>
       </tfoot>
     </table>
 
@@ -139,7 +171,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 <div class="modal-back" id="modalBack">
   <div class="modal">
     <div class="topbar2">
-      <div style="font-weight:700">Обери 3 вправи</div>
+      <div style="font-weight:700" id="modalTitle">Обери 3 вправи</div>
       <button class="btn" id="closeModal">Закрити</button>
     </div>
     <div class="cards" id="cardList"></div>
@@ -150,12 +182,29 @@ tfoot td{background:#f8fafc;font-weight:600}
   </div>
 </div>
 
+
+<div class="keypad-back" id="keypadBack" role="dialog" aria-modal="true" aria-label="Ввод результата">
+  <div class="keypad">
+    <div class="keypad-head"><span id="keypadExercise">Результат</span><button type="button" class="btn" id="keypadClose">✕</button></div>
+    <div class="keypad-display" id="keypadDisplay">0</div>
+    <div class="keypad-grid" id="keypadGrid">
+      <button class="keypad-key" data-digit="1">1</button><button class="keypad-key" data-digit="2">2</button><button class="keypad-key" data-digit="3">3</button>
+      <button class="keypad-key" data-digit="4">4</button><button class="keypad-key" data-digit="5">5</button><button class="keypad-key" data-digit="6">6</button>
+      <button class="keypad-key" data-digit="7">7</button><button class="keypad-key" data-digit="8">8</button><button class="keypad-key" data-digit="9">9</button>
+      <button class="keypad-key clear" data-action="clear">⌫</button><button class="keypad-key" data-digit="0">0</button><button class="keypad-key enter" data-action="enter">ENTER</button>
+    </div>
+    <div class="keypad-hint" id="keypadHint">Наберите результат</div>
+  </div>
+</div>
+
 <script>
-const VER='r30';
+const VER='r34';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
 let editorRows=[];
+let exerciseCount=3;
+let modalMode="normal", modalTargetIndex=-1;
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
@@ -351,23 +400,42 @@ document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('
 
 const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
 function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
+function makeEditorRow(name){
+  const scales=currentScales();
+  const info=name?(scales[name]||state.scales.M?.[name]||state.scales.J?.[name]):null;
+  return {name:name||'',displayName:name||'Выбрать упражнение…',badge:String(info?.id||'—'),unit:info?.unit||'',resultValue:0,points:0};
+}
 function initializeEditorRows(){
   const scales=currentScales();
   const names=picked.map(n=>n===GROUPED?choosePullOrKsv(scales):n);
-  editorRows=names.map(n=>{
-    const info=scales[n]||{id:'—',unit:'',map:{}};
-    return {name:n,displayName:n||'—',badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
-  });
+  editorRows=names.map(n=>makeEditorRow(n));
+  while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
+  editorRows=editorRows.slice(0,exerciseCount);
   updateEditorSummary();
 }
+function syncExerciseCount(){
+  while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
+  editorRows=editorRows.slice(0,exerciseCount);
+  const chosen=editorRows.map(r=>r.name).filter(Boolean);
+  renderRows(editorRows);
+}
+function setExerciseCount(value){
+  exerciseCount=Number(value);
+  document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>{input.checked=Number(input.value)===exerciseCount;});
+  syncExerciseCount();
+}
+function escapeHTML(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach((r,index)=>{
     const resultCell=editorMode
-      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><span class="spin-value">${formatEditorResult(r.name,r.unit,r.resultValue)}</span><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
+      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><button type="button" class="result-tap" data-result-index="${index}" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</button><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
       : r.result;
+    const exerciseCell=editorMode
+      ? `<button type="button" class="exercise-pick" data-exercise-index="${index}" aria-label="Выбрать упражнение">${escapeHTML(r.displayName||'Выбрать упражнение…')}</button>`
+      : escapeHTML(r.displayName||'—');
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${resultCell}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${escapeHTML(r.badge||'—')}</span></td><td>${exerciseCell}</td><td>${resultCell}</td><td>${r.points}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
@@ -387,12 +455,82 @@ function renderPicked(){
 document.getElementById('editorToggle').addEventListener('change',e=>{
   editorMode=e.target.checked;
   document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
+  document.getElementById('genBtn').classList.toggle('hidden',editorMode);
+  document.getElementById('editBtn').classList.toggle('hidden',editorMode);
   document.getElementById('assessmentRow').classList.toggle('hidden',!editorMode);
+  document.getElementById('exerciseCountField').classList.toggle('hidden',!editorMode);
   if(editorMode) initializeEditorRows();
   renderCurrentRows();
 });
+document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>input.addEventListener('change',e=>{
+  if(e.target.checked) setExerciseCount(e.target.value);
+  else e.target.checked=true;
+}));
 function renderCurrentRows(){if(editorMode)renderRows(editorRows);else renderPicked();}
+
+const keypadBack=document.getElementById('keypadBack');
+const keypadDisplay=document.getElementById('keypadDisplay');
+const keypadExercise=document.getElementById('keypadExercise');
+const keypadHint=document.getElementById('keypadHint');
+let keypadIndex=-1,keypadDigits='';
+function isThreeDigitExercise(row){return /функц|витривал|100\s*м|медбол|1\s*км|кілометр|километр/i.test(row.name);}
+function openResultKeypad(index){
+  const row=editorRows[index]; if(!row)return;
+  keypadIndex=index; keypadDigits='';
+  keypadExercise.textContent=row.displayName;
+  keypadDisplay.textContent='0';
+  keypadHint.textContent=isThreeDigitExercise(row)?'Введіть цифри — результат збережеться автоматично':'1–2 цифри; ENTER підтверджує результат';
+  keypadBack.classList.add('open');
+}
+function keypadValue(row,digits){
+  const n=parseInt(digits||'0',10)||0;
+  if(isMedball(row.name)) return n/100; // 125 -> 1,25 м
+  if(isHundred(row.name)) return n/10; // 123 -> 12,3 с
+  if(/км/i.test(row.name)) return n; // MMSS -> секунды below
+  return n;
+}
+function formatKeypadDigits(row,digits){
+  if(!digits) return '0';
+  if(isMedball(row.name)) return digits.length===1 ? digits : digits[0]+','+digits.slice(1);
+  if(/км/i.test(row.name)) return digits.length===1 ? digits+':' : digits[0]+':'+digits.slice(1);
+  if(isHundred(row.name)) return digits.length<3 ? digits : digits.slice(0,2)+','+digits.slice(2);
+  return digits;
+}
+function commitKeypad(){
+  const row=editorRows[keypadIndex]; if(!row)return;
+  let v;
+  if(isMedball(row.name)) v=keypadValue(row,keypadDigits);
+  else if(isHundred(row.name)) v=keypadValue(row,keypadDigits);
+  else if(/км/i.test(row.name)){
+    const digits=(keypadDigits||'0').padStart(3,'0');
+    v=parseInt(digits.slice(0,-2),10)*60+parseInt(digits.slice(-2),10);
+  } else v=parseInt(keypadDigits||'0',10)||0;
+  row.resultValue=Math.max(0,Math.round(v*1000)/1000);
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  keypadBack.classList.remove('open'); renderRows(editorRows);
+}
+document.getElementById('keypadClose').addEventListener('click',()=>keypadBack.classList.remove('open'));
+keypadBack.addEventListener('click',e=>{if(e.target===keypadBack)keypadBack.classList.remove('open');});
+document.getElementById('keypadGrid').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  if(b.dataset.action==='clear'){keypadDigits=keypadDigits.slice(0,-1);}
+  else if(b.dataset.action==='enter'){commitKeypad();return;}
+  else if(b.dataset.digit!==undefined){
+    if(keypadDigits.length>=3)return;
+    const row=editorRows[keypadIndex];
+    const digit=b.dataset.digit;
+    // For 1 km, the second digit is the tens-of-seconds digit (0–5 only).
+    if(row&&/км/i.test(row.name)&&keypadDigits.length===1&&Number(digit)>5)return;
+    keypadDigits+=digit;
+    if(row&&isThreeDigitExercise(row)&&keypadDigits.length===3){commitKeypad();return;}
+    if(row&&!isThreeDigitExercise(row)&&keypadDigits.length===2){commitKeypad();return;}
+  }
+  keypadDisplay.textContent=formatKeypadDigits(editorRows[keypadIndex]||{name:''},keypadDigits);
+});
 tbody.addEventListener('click',e=>{
+  const target=e.target.closest('[data-result-index]');
+  if(target&&editorMode){openResultKeypad(Number(target.dataset.resultIndex));return;}
+
   const btn=e.target.closest('[data-spin]');
   if(!btn||!editorMode)return;
   const row=editorRows[Number(btn.dataset.index)];
@@ -401,6 +539,41 @@ tbody.addEventListener('click',e=>{
   row.resultValue=Math.max(0,Math.round((row.resultValue+Number(btn.dataset.spin)*step)*1000)/1000);
   row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
   renderRows(editorRows);
+});
+let wheelGesture=null;
+tbody.addEventListener('wheel',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode)return;
+  e.preventDefault();
+  const row=editorRows[Number(wheel.dataset.wheelIndex)];
+  if(row)nudgeWheel(row,e.deltaY>0?1:-1,Math.max(1,Math.min(4,Math.round(Math.abs(e.deltaY)/45))));
+},{passive:false});
+tbody.addEventListener('pointerdown',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode)return;
+  wheelGesture={index:Number(wheel.dataset.wheelIndex),startY:e.clientY,lastY:e.clientY,accum:0};
+  tbody.setPointerCapture?.(e.pointerId);
+});
+tbody.addEventListener('pointermove',e=>{
+  if(!wheelGesture)return;
+  const dy=wheelGesture.lastY-e.clientY;
+  wheelGesture.lastY=e.clientY;
+  wheelGesture.accum+=dy;
+  const ticks=Math.trunc(wheelGesture.accum/5);
+  if(ticks){
+    const row=editorRows[wheelGesture.index];
+    if(row)nudgeWheel(row,ticks>0?1:-1,Math.abs(ticks));
+    wheelGesture.accum-=ticks*5;
+  }
+});
+tbody.addEventListener('pointerup',()=>{wheelGesture=null;});
+tbody.addEventListener('pointercancel',()=>{wheelGesture=null;});
+tbody.addEventListener('keydown',e=>{
+  const wheel=e.target.closest('[data-wheel-index]');
+  if(!wheel||!editorMode||!['ArrowUp','ArrowDown','PageUp','PageDown'].includes(e.key))return;
+  e.preventDefault();
+  const row=editorRows[Number(wheel.dataset.wheelIndex)];
+  if(row)nudgeWheel(row,e.key==='ArrowUp'||e.key==='PageUp'?-1:1,e.key==='PageUp'||e.key==='PageDown'?10:1);
 });
 
 /* ===== модал выбора ===== */
@@ -412,23 +585,47 @@ const cardList=document.getElementById('cardList');
 const selCount=document.getElementById('selCount');
 
 function editorStep(name,unit){
-  if(isMedball(name)) return 0.05; // 5 см, шаг шкалы медбола
-  if(isHundred(name)) return 0.1;
+  if(isMedball(name)) return 0.05; // 5 см
+  if(isHundred(name)) return 0.1; // 0,1 секунди
   if(/км/i.test(name)) return 1;
   return 1;
+}
+function wheelBounds(row){
+  const map=currentScales()[row.name]?.map||{};
+  const entries=Object.entries(map).map(([p,r])=>({points:Number(p),metric:resultMetric(row.name,row.unit,r)}))
+    .filter(x=>Number.isFinite(x.points)&&Number.isFinite(x.metric)&&x.points>=6&&x.points<=50)
+    .sort((a,b)=>a.points-b.points);
+  if(!entries.length) return {min:0,max:100,step:1};
+  const low=entries.reduce((best,x)=>Math.abs(x.points-6)<Math.abs(best.points-6)?x:best,entries[0]);
+  const high=entries.reduce((best,x)=>Math.abs(x.points-50)<Math.abs(best.points-50)?x:best,entries[entries.length-1]);
+  const a=Math.min(low.metric,high.metric),b=Math.max(low.metric,high.metric);
+  const step=(b-a)/44;
+  return {min:a,max:b,step:Math.max(step,0.001)};
+}
+function wheelNeighbor(row,direction){
+  const b=wheelBounds(row),v=Number(row.resultValue)||0;
+  const n=Math.max(b.min,Math.min(b.max,v+direction*b.step));
+  return formatEditorResult(row.name,row.unit,n);
+}
+function nudgeWheel(row,direction,amount=1){
+  const b=wheelBounds(row),v=Number(row.resultValue)||0;
+  const next=Math.max(b.min,Math.min(b.max,v+direction*b.step*amount));
+  row.resultValue=Math.round(next*1000)/1000;
+  row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
+  renderRows(editorRows);
 }
 function formatEditorResult(name,unit,value){
   if(isMedball(name)) return Number(value).toFixed(2).replace('.',',');
   if(isHundred(name)) return Number(value).toFixed(1).replace('.',',');
   if(/км/i.test(name)){
     const n=Math.max(0,Math.round(Number(value)||0));
-    return `${Math.floor(n/60)},${String(n%60).padStart(2,'0')}`;
+    return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`;
   }
   return String(Math.round(Number(value)||0));
 }
 function resultMetric(name,unit,value){
   if(/км/i.test(name)){
-    const p=String(value).split(',').map(x=>parseInt(x,10));
+    const p=String(value).replace(':',',').split(',').map(x=>parseInt(x,10));
     return (p[0]||0)*60+(p[1]||0);
   }
   const n=Number(String(value).trim().replace(',','.'));
@@ -458,7 +655,35 @@ function updateEditorSummary(total){
   const resultGrade=below?2:(sum>=s5?5:sum>=s4?4:sum>=s3?3:2);
   assessmentEl.textContent=String(resultGrade)+(below?' — нижче порогового мінімуму':'');
 }
+function buildEditorExerciseMenu(index){
+  modalMode='editor'; modalTargetIndex=index;
+  const row=editorRows[index];
+  document.getElementById('modalTitle').textContent=`Упражнение для строки ${index+1}`;
+  selCount.classList.add('hidden'); applySel.classList.add('hidden');
+  cardList.innerHTML='';
+  const names=[...new Set([...Object.keys(state.scales.M||{}),...Object.keys(state.scales.J||{})])].sort((a,b)=>a.localeCompare(b,'uk'));
+  names.forEach(name=>{
+    const usedElsewhere=editorRows.some((r,i)=>i!==index&&r.name===name);
+    const current=row?.name===name;
+    const div=document.createElement('div');
+    div.className='card'+(current?' sel current':'')+(usedElsewhere?' disabled':'');
+    div.textContent=name+(current?' ✓':usedElsewhere?' · уже выбрано':'');
+    div.setAttribute('aria-disabled',String(usedElsewhere||current));
+    div.addEventListener('click',()=>{
+      if(usedElsewhere||current)return;
+      const info=currentScales()[name]||state.scales.M?.[name]||state.scales.J?.[name]||{id:'—',unit:'',map:{}};
+      editorRows[index]={name,displayName:name,badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
+      modalBack.style.display='none';
+      renderRows(editorRows);
+    });
+    cardList.appendChild(div);
+  });
+  modalBack.style.display='flex';
+}
 function buildCards(){
+  modalMode='normal'; modalTargetIndex=-1;
+  document.getElementById('modalTitle').textContent='Обери 3 вправи';
+  selCount.classList.remove('hidden'); applySel.classList.remove('hidden');
   cardList.innerHTML='';
   let temp=[...picked];
   const all = state.choices || [];
@@ -501,6 +726,10 @@ function buildCards(){
 editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
+tbody.addEventListener('click',e=>{
+  const pick=e.target.closest('[data-exercise-index]');
+  if(pick&&editorMode){buildEditorExerciseMenu(Number(pick.dataset.exerciseIndex));return;}
+});
 
 /* ===== вспомогательные для результатов ===== */
 function formatDecComma(x, decs){ return x.toFixed(decs).replace('.',','); }
