@@ -47,6 +47,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 .card.sel{background:#ecfdf5;border-color:#34d399}
 .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .hidden{display:none}
+.assessment-tools{display:flex;align-items:center;justify-content:flex-start;gap:18px;flex-wrap:wrap}.count-field{margin:0;padding:3px 8px 5px;min-width:130px}.count-field legend{font-size:11px;padding:0 4px}.count-field .controls{gap:10px}.count-field label.inline{gap:4px;font-size:13px}.exercise-pick{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;font:inherit;line-height:1.2;padding:2px 0;cursor:pointer}.exercise-pick:after{content:" ✎";font-size:11px;color:#64748b}.card.disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9;border-color:#cbd5e1}.card.current{outline:2px solid #34d399;outline-offset:1px}
 .warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
 .result-spinner{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}
@@ -90,7 +91,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r33</div>
+    <div class="chip">Генератор оцінки · r34</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -143,7 +144,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
       </tbody>
       <tfoot>
         <tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr>
-        <tr id="assessmentRow" class="hidden"><td></td><td>Оцінка</td><td colspan="2" id="assessment">—</td></tr>
+        <tr id="assessmentRow" class="hidden"><td></td><td>Оцінка</td><td colspan="2"><div class="assessment-tools"><strong id="assessment">—</strong><fieldset id="exerciseCountField" class="count-field"><legend>К-ть вправ</legend><div class="controls"><label class="inline"><input type="checkbox" name="exerciseCount" value="3" checked><span>3</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="4"><span>4</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="5"><span>5</span></label></div></fieldset></div></td></tr>
       </tfoot>
     </table>
 
@@ -170,7 +171,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 <div class="modal-back" id="modalBack">
   <div class="modal">
     <div class="topbar2">
-      <div style="font-weight:700">Обери 3 вправи</div>
+      <div style="font-weight:700" id="modalTitle">Обери 3 вправи</div>
       <button class="btn" id="closeModal">Закрити</button>
     </div>
     <div class="cards" id="cardList"></div>
@@ -197,11 +198,13 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r33';
+const VER='r34';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
 let editorRows=[];
+let exerciseCount=3;
+let modalMode="normal", modalTargetIndex=-1;
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
@@ -397,23 +400,43 @@ document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('
 
 const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
 function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
+function makeEditorRow(name){
+  const scales=currentScales();
+  const info=name?(scales[name]||state.scales.M?.[name]||state.scales.J?.[name]):null;
+  return {name:name||'',displayName:name||'Выбрать упражнение…',badge:String(info?.id||'—'),unit:info?.unit||'',resultValue:0,points:0};
+}
 function initializeEditorRows(){
   const scales=currentScales();
   const names=picked.map(n=>n===GROUPED?choosePullOrKsv(scales):n);
-  editorRows=names.map(n=>{
-    const info=scales[n]||{id:'—',unit:'',map:{}};
-    return {name:n,displayName:n||'—',badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
-  });
+  editorRows=names.map(n=>makeEditorRow(n));
+  while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
+  editorRows=editorRows.slice(0,exerciseCount);
   updateEditorSummary();
 }
+function syncExerciseCount(){
+  while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
+  editorRows=editorRows.slice(0,exerciseCount);
+  const chosen=editorRows.map(r=>r.name).filter(Boolean);
+  picked=chosen;
+  renderRows(editorRows);
+}
+function setExerciseCount(value){
+  exerciseCount=Number(value);
+  document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>{input.checked=Number(input.value)===exerciseCount;});
+  syncExerciseCount();
+}
+function escapeHTML(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach((r,index)=>{
     const resultCell=editorMode
       ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><button type="button" class="result-tap" data-result-index="${index}" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</button><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
       : r.result;
+    const exerciseCell=editorMode
+      ? `<button type="button" class="exercise-pick" data-exercise-index="${index}" aria-label="Выбрать упражнение">${escapeHTML(r.displayName||'Выбрать упражнение…')}</button>`
+      : escapeHTML(r.displayName||'—');
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell"><span class="idpill">${r.badge||'—'}</span></td><td>${r.displayName}</td><td>${resultCell}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${escapeHTML(r.badge||'—')}</span></td><td>${exerciseCell}</td><td>${resultCell}</td><td>${r.points}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
@@ -434,10 +457,15 @@ document.getElementById('editorToggle').addEventListener('change',e=>{
   editorMode=e.target.checked;
   document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
   document.getElementById('genBtn').classList.toggle('hidden',editorMode);
+  document.getElementById('editBtn').classList.toggle('hidden',editorMode);
   document.getElementById('assessmentRow').classList.toggle('hidden',!editorMode);
+  document.getElementById('exerciseCountField').classList.toggle('hidden',!editorMode);
   if(editorMode) initializeEditorRows();
   renderCurrentRows();
 });
+document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>input.addEventListener('change',e=>{
+  if(e.target.checked) setExerciseCount(e.target.value);
+}));
 function renderCurrentRows(){if(editorMode)renderRows(editorRows);else renderPicked();}
 
 const keypadBack=document.getElementById('keypadBack');
@@ -627,7 +655,36 @@ function updateEditorSummary(total){
   const resultGrade=below?2:(sum>=s5?5:sum>=s4?4:sum>=s3?3:2);
   assessmentEl.textContent=String(resultGrade)+(below?' — нижче порогового мінімуму':'');
 }
+function buildEditorExerciseMenu(index){
+  modalMode='editor'; modalTargetIndex=index;
+  const row=editorRows[index];
+  document.getElementById('modalTitle').textContent=`Упражнение для строки ${index+1}`;
+  selCount.classList.add('hidden'); applySel.classList.add('hidden');
+  cardList.innerHTML='';
+  const names=[...new Set([...Object.keys(state.scales.M||{}),...Object.keys(state.scales.J||{})])].sort((a,b)=>a.localeCompare(b,'uk'));
+  names.forEach(name=>{
+    const usedElsewhere=editorRows.some((r,i)=>i!==index&&r.name===name);
+    const current=row?.name===name;
+    const div=document.createElement('div');
+    div.className='card'+(current?' sel current':'')+(usedElsewhere?' disabled':'');
+    div.textContent=name+(current?' ✓':usedElsewhere?' · уже выбрано':'');
+    div.setAttribute('aria-disabled',String(usedElsewhere||current));
+    div.addEventListener('click',()=>{
+      if(usedElsewhere||current)return;
+      const info=currentScales()[name]||state.scales.M?.[name]||state.scales.J?.[name]||{id:'—',unit:'',map:{}};
+      editorRows[index]={name,displayName:name,badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
+      picked=editorRows.map(r=>r.name).filter(Boolean);
+      modalBack.style.display='none';
+      renderRows(editorRows);
+    });
+    cardList.appendChild(div);
+  });
+  modalBack.style.display='flex';
+}
 function buildCards(){
+  modalMode='normal'; modalTargetIndex=-1;
+  document.getElementById('modalTitle').textContent='Обери 3 вправи';
+  selCount.classList.remove('hidden'); applySel.classList.remove('hidden');
   cardList.innerHTML='';
   let temp=[...picked];
   const all = state.choices || [];
@@ -670,6 +727,10 @@ function buildCards(){
 editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
 applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
+tbody.addEventListener('click',e=>{
+  const pick=e.target.closest('[data-exercise-index]');
+  if(pick&&editorMode){buildEditorExerciseMenu(Number(pick.dataset.exerciseIndex));return;}
+});
 
 /* ===== вспомогательные для результатов ===== */
 function formatDecComma(x, decs){ return x.toFixed(decs).replace('.',','); }
