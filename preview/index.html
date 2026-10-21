@@ -417,7 +417,6 @@ function syncExerciseCount(){
   while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
   editorRows=editorRows.slice(0,exerciseCount);
   const chosen=editorRows.map(r=>r.name).filter(Boolean);
-  picked=chosen;
   renderRows(editorRows);
 }
 function setExerciseCount(value){
@@ -465,6 +464,7 @@ document.getElementById('editorToggle').addEventListener('change',e=>{
 });
 document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>input.addEventListener('change',e=>{
   if(e.target.checked) setExerciseCount(e.target.value);
+  else e.target.checked=true;
 }));
 function renderCurrentRows(){if(editorMode)renderRows(editorRows);else renderPicked();}
 
@@ -673,7 +673,6 @@ function buildEditorExerciseMenu(index){
       if(usedElsewhere||current)return;
       const info=currentScales()[name]||state.scales.M?.[name]||state.scales.J?.[name]||{id:'—',unit:'',map:{}};
       editorRows[index]={name,displayName:name,badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
-      picked=editorRows.map(r=>r.name).filter(Boolean);
       modalBack.style.display='none';
       renderRows(editorRows);
     });
