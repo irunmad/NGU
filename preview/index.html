@@ -406,10 +406,11 @@ document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('
 
 const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
 function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
+function displayExerciseName(name){const value=String(name||'');const i=value.lastIndexOf(' [');return i>=0&&value.endsWith(']')?value.slice(0,i):value;}
 function makeEditorRow(name){
   const scales=currentScales();
   const info=name?(scales[name]||state.scales.M?.[name]||state.scales.J?.[name]):null;
-  return {name:name||'',displayName:name?name.replace(/ \\[[^\\]]+\\]$/,''):'Выбрать упражнение…',badge:String(info?.id||'—'),unit:info?.unit||'',resultValue:0,points:0};
+  return {name:name||'',displayName:name?displayExerciseName(name):'Выбрать упражнение…',badge:String(info?.id||'—'),unit:info?.unit||'',resultValue:0,points:0};
 }
 function initializeEditorRows(){
   const scales=currentScales();
@@ -443,7 +444,7 @@ function renderRows(rows){
     const minPer=onlyNumber(activeThreshold()?.min_per_exercise);
     const pointsNum=Number(r.points);
     const hasPoints=Number.isFinite(pointsNum)&&String(r.points)!=='—';
-    const below=hasPoints&&Number.isFinite(minPer)&&pointsNum<minPer;
+    const below=!!r.name&&hasPoints&&Number.isFinite(minPer)&&pointsNum<minPer;
     const barWidth=hasPoints?Math.max(0,Math.min(100,pointsNum/50*100)):0;
     const scoreCell=hasPoints?`<div class="score-cell${below?' below-min':''}"><span class="score-num">${pointsNum}</span><div class="score-bar"><div class="score-bar-fill" style="width:${barWidth}%"></div></div></div>`:escapeHTML(r.points??'—');
     const tr=document.createElement('tr');
@@ -700,7 +701,7 @@ function buildEditorExerciseMenu(index){
     button.className='exercise-option'+(current?' current':'');
     button.disabled=disabled;
     const number=document.createElement('span');number.className='exercise-number';number.textContent=String((info||infoM||infoW)?.id||'—');
-    const title=document.createElement('span');title.className='exercise-title';title.textContent=name.replace(/ \\[[^\\]]+\\]$/,'');
+    const title=document.createElement('span');title.className='exercise-title';title.textContent=displayExerciseName(name);
     const status=document.createElement('span');status.className='exercise-status';status.textContent=current?'✓':usedElsewhere?'вже вибрано':unavailable?'немає нормативу':'';
     button.append(number,title,status);
     button.addEventListener('click',()=>{
