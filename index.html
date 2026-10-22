@@ -22,7 +22,7 @@ legend{font-size:14px;color:var(--muted);padding:0 6px}
 .controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
 .row + .row{margin-top:10px}
-.age-grid{display:grid;grid-template-columns:repeat(7,minmax(30px,1fr));gap:6px}.age-option{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;white-space:normal}.age-option .age-number-row{display:flex;align-items:center;justify-content:center;gap:11px;font-weight:700}.age-option input{margin:0}.age-option small{font-size:9px;line-height:1.1;color:#64748b;text-align:center;white-space:nowrap}
+.age-grid{display:grid;grid-template-columns:repeat(7,minmax(30px,1fr));gap:10px}.age-option{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;white-space:normal}.age-option .age-number-row{display:flex;align-items:center;justify-content:center;gap:3px;font-weight:700}.age-option input{margin:0}.age-option small{font-size:9px;line-height:1.1;color:#64748b;text-align:center;white-space:nowrap}
 label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
 thead{background:#f1f5f9;color:#475569;font-size:14px}
@@ -91,7 +91,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r40</div>
+    <div class="chip">Генератор оцінки · r41</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -144,8 +144,8 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
         <tr><td class="idcell"><span class="idpill">—</span></td><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
       </tbody>
       <tfoot>
-        <tr class="tfoot-score-row"><td></td><td>Сума балів</td><td><div id="assessment" class="assessment-wrap hidden"><span class="assessment-grade">—</span></div></td><td><span id="sum" class="total-score">0</span><div id="totalScoreBar" class="score-bar"><div id="totalScoreBarFill" class="score-bar-fill" style="width:0%"></div></div></td></tr>
-        <tr id="assessmentRow" class="hidden tfoot-assessment-row"><td></td><td>Оцінка</td><td></td><td></td></tr>
+        <tr class="tfoot-score-row"><td></td><td>Сума балів</td><td>—</td><td><span id="sum" class="total-score">0</span><div id="totalScoreBar" class="score-bar"><div id="totalScoreBarFill" class="score-bar-fill" style="width:0%"></div></div></td></tr>
+        <tr id="assessmentRow" class="hidden tfoot-assessment-row"><td></td><td>Оцінка</td><td><div id="assessment" class="assessment-wrap"><span class="assessment-grade">—</span></div></td><td></td></tr>
       </tfoot>
     </table>
 
@@ -199,7 +199,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r40';
+const VER='r41';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
