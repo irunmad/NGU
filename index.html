@@ -91,7 +91,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r37</div>
+    <div class="chip">Генератор оцінки · r38</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -199,7 +199,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r37';
+const VER='r38';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -255,8 +255,8 @@ async function loadScales(url){
   for(const cols of data){
     if(!cols.length) continue;
     let id='', name='', unit='', pts='', res='';
-    const first=cols[0];
-    const looksLikeID = /^\d+[a-zа-я]?$/i.test(first); // поддержка 32б
+    const first=String(cols[0]||'').trim();
+    const looksLikeID = /^\d+[a-zа-яё]?$/iu.test(first); // поддержка кириллических ID, например 14а
     if(looksLikeID && cols.length>=5){
       [id,name,unit,pts,res]=[cols[0],cols[1],cols[2],cols[3],cols[4]];
     }else{
@@ -266,7 +266,7 @@ async function loadScales(url){
     if(!name) continue;
     const points = parseInt(String(pts||'').replace(/\s/g,''),10);
     if(!Number.isFinite(points)) continue;
-    const key=/комплексн.*силов/i.test(name)&&id?`${name} [${id}]`:name;
+    const key=/комплекс.*силов/i.test(name)&&id?`${name} [${String(id).trim().toLowerCase()}]`:name;
     if(!byName[key]) byName[key] = { id: (id||'—'), unit, map:{} };
     byName[key].map[points] = stripQuotes(res);
   }
@@ -706,7 +706,7 @@ function buildEditorExerciseMenu(index){
     button.append(number,title,status);
     button.addEventListener('click',()=>{
       if(disabled)return;
-      editorRows[index]={name,displayName:name.replace(/ \\[[^\\]]+\\]$/,''),badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
+      editorRows[index]={name,displayName:displayExerciseName(name),badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
       modalBack.style.display='none';
       renderRows(editorRows);
     });
