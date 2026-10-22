@@ -91,7 +91,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r43</div>
+    <div class="chip">Генератор оцінки · r44</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -199,7 +199,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r43';
+const VER='r44';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -407,7 +407,7 @@ document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('
 
 const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
 function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
-function displayExerciseName(name){const value=String(name||'');const i=value.lastIndexOf(' [');return i>=0&&value.endsWith(']')?value.slice(0,i):value;}
+function displayExerciseName(name){const value=String(name||'');const i=value.lastIndexOf(' [');const clean=i>=0&&value.endsWith(']')?value.slice(0,i):value;return clean.replace(/\s*\((?:14а?|14а)\)\s*$/iu,'').trim();}
 function makeEditorRow(name){
   const scales=currentScales();
   const info=name?(scales[name]||state.scales.M?.[name]||state.scales.J?.[name]):null;
