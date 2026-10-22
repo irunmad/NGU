@@ -199,7 +199,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r45';
+const VER='r44';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -267,18 +267,7 @@ async function loadScales(url){
     const points = parseInt(String(pts||'').replace(/\s/g,''),10);
     if(!Number.isFinite(points)) continue;
     const normalizedId=String(id||'').trim().normalize('NFC').toLowerCase();
-    let key=name;
-    if(normalizedId){
-      const exactKey=`${name} [${normalizedId}]`;
-      const plain=byName[name];
-      if(plain&&String(plain.id||'').trim().normalize('NFC').toLowerCase()!==normalizedId){
-        const oldId=String(plain.id||'').trim().normalize('NFC').toLowerCase();
-        byName[`${name} [${oldId}]`]=plain;
-        delete byName[name];
-      }
-      const hasIdVariants=Object.keys(byName).some(k=>k.startsWith(name+' [')&&k.endsWith(']'));
-      if(hasIdVariants||byName[exactKey]) key=exactKey;
-    }
+    const key=/комплекс.*силов/i.test(name)&&normalizedId?`${name} [${normalizedId}]`:name;
     if(!byName[key]) byName[key] = { id: (id||'—'), unit, map:{} };
     byName[key].map[points] = stripQuotes(res);
   }
