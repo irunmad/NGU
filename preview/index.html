@@ -32,7 +32,7 @@ tbody td:nth-child(3), tbody td:nth-child(4),
 tfoot td:nth-child(2), tfoot td:nth-child(3){text-align:center}
 tfoot td{background:#f8fafc;font-weight:600}
 .idcell{width:54px;text-align:center}
-.idpill{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:999px;background:#0f172a;color:#fff;font-weight:800;margin:auto}
+.idpill{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:999px;background:#0f172a;color:#fff;font-weight:800;font-size:11px;margin:auto}
 .btn{appearance:none;border:1px solid var(--br);background:#fff;padding:14px 16px;border-radius:12px;cursor:pointer;font-weight:800;width:100%}
 .btn.primary{background:var(--acc);color:#fff;border-color:#0b1220}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -47,7 +47,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 .card.sel{background:#ecfdf5;border-color:#34d399}
 .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .hidden{display:none}
-.assessment-tools{display:flex;align-items:center;justify-content:flex-start;gap:18px;flex-wrap:wrap}.count-field{margin:0;padding:3px 8px 5px;min-width:130px}.count-field legend{font-size:11px;padding:0 4px}.count-field .controls{gap:10px}.count-field label.inline{gap:4px;font-size:13px}.exercise-pick{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;font:inherit;line-height:1.2;padding:2px 0;cursor:pointer}.exercise-pick:after{content:" ✎";font-size:11px;color:#64748b}.card.disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9;border-color:#cbd5e1}.card.current{outline:2px solid #34d399;outline-offset:1px}
+.assessment-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.count-field{margin:0;padding:3px 8px 5px;min-width:130px}.count-field legend{font-size:11px;padding:0 4px}.count-field .controls{gap:10px}.count-field label.inline{gap:4px;font-size:13px}.exercise-pick{display:flex;align-items:center;gap:5px;width:100%;min-width:0;border:0;background:transparent;color:inherit;text-align:left;font:inherit;line-height:1.15;padding:2px 0;cursor:pointer}.exercise-pick .exercise-name{flex:1;min-width:0}.exercise-pick .pencil{flex:0 0 auto;color:#64748b;font-size:12px;white-space:nowrap}.card.disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9;border-color:#cbd5e1}.card.current{outline:2px solid #34d399;outline-offset:1px}.exercise-menu{display:flex;flex-direction:column;gap:0;max-height:min(70vh,620px);overflow:auto}.exercise-option{display:flex;align-items:center;gap:9px;text-align:left;width:100%;border:0;border-bottom:1px solid var(--br);border-radius:0;padding:10px 8px;background:#fff;color:var(--fg);font:inherit;min-height:42px}.exercise-option .exercise-number{flex:0 0 58px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}.exercise-option .exercise-title{flex:1;min-width:0}.exercise-option .exercise-status{font-size:12px;color:#64748b;flex:0 0 auto}.exercise-option:disabled{opacity:.42;background:#f8fafc}.exercise-option.current{background:#ecfdf5}.score-cell{font-variant-numeric:tabular-nums}.score-num{display:block;font-weight:750}.score-bar{height:4px;width:100%;min-width:28px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-top:4px}.score-bar-fill{height:100%;border-radius:99px;background:#64748b}.below-min .score-num{color:#dc2626}.below-min .score-bar-fill{background:#dc2626}.total-score{font-size:19px;font-weight:850;color:var(--fg);display:block}.total-score.bad{color:#dc2626}.assessment-grade{display:inline-grid;place-items:center;width:34px;height:34px;border:2px solid currentColor;border-radius:50%;font-size:19px;font-weight:850;line-height:1}.assessment-grade.bad{color:#dc2626}.assessment-note{display:block;font-size:10px;font-weight:500;line-height:1.1;margin-top:3px;color:#dc2626}.tfoot-score-row td:last-child,.tfoot-assessment-row td:last-child{text-align:center}
 .warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
 .result-spinner{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}
@@ -113,7 +113,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
     </fieldset>
     <fieldset class="tight editor-fieldset">
       <legend> </legend>
-      <label class="inline"><input type="checkbox" id="editorToggle"><span>Редактор</span></label>
+      <label class="inline"><input type="checkbox" id="editorToggle"><span>Режим</span></label>
     </fieldset>
   </div>
 
@@ -123,6 +123,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
       <legend>Вікова група (1–7)</legend>
       <div class="age-grid" id="ageGrid"></div>
     </fieldset>
+    <fieldset id="exerciseCountField" class="count-field hidden" style="margin-top:10px"><legend>К-ть вправ</legend><div class="controls"><label class="inline"><input type="checkbox" name="exerciseCount" value="3" checked><span>3</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="4"><span>4</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="5"><span>5</span></label></div></fieldset>
     <fieldset id="gradeFieldset" style="margin-top:10px">
       <legend>Оцінка</legend>
       <div class="controls">
@@ -143,8 +144,8 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
         <tr><td class="idcell"><span class="idpill">—</span></td><td>Функц. витривалість</td><td>—</td><td>—</td></tr>
       </tbody>
       <tfoot>
-        <tr><td></td><td>Сума балів</td><td>—</td><td id="sum">0</td></tr>
-        <tr id="assessmentRow" class="hidden"><td></td><td>Оцінка</td><td colspan="2"><div class="assessment-tools"><strong id="assessment">—</strong><fieldset id="exerciseCountField" class="count-field"><legend>К-ть вправ</legend><div class="controls"><label class="inline"><input type="checkbox" name="exerciseCount" value="3" checked><span>3</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="4"><span>4</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="5"><span>5</span></label></div></fieldset></div></td></tr>
+        <tr class="tfoot-score-row"><td></td><td>Сума балів</td><td>—</td><td><span id="sum" class="total-score">0</span><div id="totalScoreBar" class="score-bar"><div id="totalScoreBarFill" class="score-bar-fill" style="width:0%"></div></div></td></tr>
+        <tr id="assessmentRow" class="hidden tfoot-assessment-row"><td></td><td>Оцінка</td><td>—</td><td><span id="assessment" class="assessment-grade">—</span></td></tr>
       </tfoot>
     </table>
 
@@ -432,10 +433,16 @@ function renderRows(rows){
       ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><button type="button" class="result-tap" data-result-index="${index}" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</button><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
       : r.result;
     const exerciseCell=editorMode
-      ? `<button type="button" class="exercise-pick" data-exercise-index="${index}" aria-label="Выбрать упражнение">${escapeHTML(r.displayName||'Выбрать упражнение…')}</button>`
+      ? `<button type="button" class="exercise-pick" data-exercise-index="${index}" aria-label="Выбрать упражнение"><span class="exercise-name">${escapeHTML(r.displayName||'Выбрать упражнение…')}</span><span class="pencil" aria-hidden="true">✎</span></button>`
       : escapeHTML(r.displayName||'—');
+    const minPer=onlyNumber(activeThreshold()?.min_per_exercise);
+    const pointsNum=Number(r.points);
+    const hasPoints=Number.isFinite(pointsNum)&&String(r.points)!=='—';
+    const below=hasPoints&&Number.isFinite(minPer)&&pointsNum<minPer;
+    const barWidth=hasPoints?Math.max(0,Math.min(100,pointsNum/50*100)):0;
+    const scoreCell=hasPoints?`<div class="score-cell${below?' below-min':''}"><span class="score-num">${pointsNum}</span><div class="score-bar"><div class="score-bar-fill" style="width:${barWidth}%"></div></div></div>`:escapeHTML(r.points??'—');
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="idcell"><span class="idpill">${escapeHTML(r.badge||'—')}</span></td><td>${exerciseCell}</td><td>${resultCell}</td><td>${r.points}</td>`;
+    tr.innerHTML=`<td class="idcell"><span class="idpill">${escapeHTML(r.badge||'—')}</span></td><td>${exerciseCell}</td><td>${resultCell}</td><td>${scoreCell}</td>`;
     tbody.appendChild(tr);
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
@@ -648,35 +655,57 @@ function updateEditorSummary(total){
   const sum=Number.isFinite(total)?total:editorRows.reduce((a,r)=>a+(Number(r.points)||0),0);
   sumEl.textContent=sum;
   const th=activeThreshold();
-  if(!th){assessmentEl.textContent='Немає нормативу';return;}
+  const sumBar=document.getElementById('totalScoreBarFill');
+  if(!th){assessmentEl.textContent='—';assessmentEl.classList.remove('bad');return;}
   const minPer=onlyNumber(th.min_per_exercise);
   const s3=onlyNumber(th.sum_for_grade_3),s4=onlyNumber(th.sum_for_grade_4),s5=onlyNumber(th.sum_for_grade_5);
-  const below=editorRows.some(r=>(Number(r.points)||0)<minPer);
+  const below=editorRows.some(r=>r.name&&(Number(r.points)||0)<minPer);
   const resultGrade=below?2:(sum>=s5?5:sum>=s4?4:sum>=s3?3:2);
-  assessmentEl.textContent=String(resultGrade)+(below?' — нижче порогового мінімуму':'');
+  const bad=resultGrade===2;
+  assessmentEl.classList.toggle('bad',bad);
+  sumEl.classList.toggle('bad',bad);
+  assessmentEl.innerHTML=String(resultGrade)+(below?'<span class="assessment-note">(нижче порогового мінімуму)</span>':'');
+  if(sumBar){sumBar.style.width=Math.max(0,Math.min(100,sum/Math.max(s5,1)*100))+'%';sumBar.style.background=bad?'#dc2626':'';}
+}
+function exerciseIdNumber(info){
+  const id=String(info?.id||'').trim();
+  const m=id.match(/^(\\d+)/);
+  return m?Number(m[1]):9999;
 }
 function buildEditorExerciseMenu(index){
   modalMode='editor'; modalTargetIndex=index;
   const row=editorRows[index];
   document.getElementById('modalTitle').textContent=`Упражнение для строки ${index+1}`;
   selCount.classList.add('hidden'); applySel.classList.add('hidden');
+  cardList.classList.add('exercise-menu');
   cardList.innerHTML='';
-  const names=[...new Set([...Object.keys(state.scales.M||{}),...Object.keys(state.scales.J||{})])].sort((a,b)=>a.localeCompare(b,'uk'));
-  names.forEach(name=>{
+  const allNames=[...new Set([...Object.keys(state.scales.M||{}),...Object.keys(state.scales.J||{})])];
+  const names=allNames.map(name=>({name,infoM:state.scales.M?.[name],infoW:state.scales.J?.[name]})).sort((a,b)=>{
+    const an=exerciseIdNumber(a.infoM||a.infoW),bn=exerciseIdNumber(b.infoM||b.infoW);
+    return an-bn||String((a.infoM||a.infoW)?.id||'').localeCompare(String((b.infoM||b.infoW)?.id||''),'uk')||a.name.localeCompare(b.name,'uk');
+  });
+  names.forEach(item=>{
+    const {name,infoM,infoW}=item;
+    const info=sex==='M'?infoM:infoW;
     const usedElsewhere=editorRows.some((r,i)=>i!==index&&r.name===name);
     const current=row?.name===name;
-    const div=document.createElement('div');
-    div.className='card'+(current?' sel current':'')+(usedElsewhere?' disabled':'');
-    div.textContent=name+(current?' ✓':usedElsewhere?' · уже выбрано':'');
-    div.setAttribute('aria-disabled',String(usedElsewhere||current));
-    div.addEventListener('click',()=>{
-      if(usedElsewhere||current)return;
-      const info=currentScales()[name]||state.scales.M?.[name]||state.scales.J?.[name]||{id:'—',unit:'',map:{}};
+    const unavailable=!info;
+    const disabled=usedElsewhere||unavailable||current;
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='exercise-option'+(current?' current':'');
+    button.disabled=disabled;
+    const number=document.createElement('span');number.className='exercise-number';number.textContent=String((info||infoM||infoW)?.id||'—');
+    const title=document.createElement('span');title.className='exercise-title';title.textContent=name;
+    const status=document.createElement('span');status.className='exercise-status';status.textContent=current?'✓':usedElsewhere?'вже вибрано':unavailable?'немає нормативу':'';
+    button.append(number,title,status);
+    button.addEventListener('click',()=>{
+      if(disabled)return;
       editorRows[index]={name,displayName:name,badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
       modalBack.style.display='none';
       renderRows(editorRows);
     });
-    cardList.appendChild(div);
+    cardList.appendChild(button);
   });
   modalBack.style.display='flex';
 }
