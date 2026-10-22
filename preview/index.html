@@ -91,7 +91,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 <div class="wrap">
   <div class="topbar">
     <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r42</div>
+    <div class="chip">Генератор оцінки · r43</div>
     <div id="dataState" class="chip">Завантаження…</div>
   </div>
 
@@ -199,7 +199,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r42';
+const VER='r43';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -674,6 +674,9 @@ function updateEditorSummary(total){
   assessmentEl.innerHTML='<span class="assessment-grade'+(bad?' bad':'')+'">'+resultGrade+'</span>'+(below?'<span class="assessment-note">(нижче порогового мінімуму)</span>':'');
   if(sumBar){sumBar.style.width=Math.max(0,Math.min(100,sum/Math.max(s5,1)*100))+'%';sumBar.style.background=bad?'#dc2626':'';}
 }
+function normalizeExerciseId(id){return String(id||'').trim().normalize('NFC').toLowerCase();}
+function exerciseKeyId(name){const m=String(name||'').match(/\[([^\]]+)\]$/);return m?normalizeExerciseId(m[1]):'';}
+function findScaleById(scales,id){const wanted=normalizeExerciseId(id);if(!wanted)return null;return Object.values(scales||{}).find(info=>normalizeExerciseId(info?.id)===wanted)||null;}
 function exerciseIdNumber(info){
   const id=String(info?.id||'').trim();
   const m=id.match(/^(\d+)/);
@@ -687,7 +690,7 @@ function buildEditorExerciseMenu(index){
   cardList.classList.add('exercise-menu');
   cardList.innerHTML='';
   const allNames=[...new Set([...Object.keys(state.scales.M||{}),...Object.keys(state.scales.J||{})])];
-  const names=allNames.map(name=>({name,infoM:state.scales.M?.[name],infoW:state.scales.J?.[name]})).sort((a,b)=>{
+  const names=allNames.map(name=>{const keyId=exerciseKeyId(name);return {name,infoM:state.scales.M?.[name]||(keyId?findScaleById(state.scales.M,keyId):null),infoW:state.scales.J?.[name]||(keyId?findScaleById(state.scales.J,keyId):null)};}).sort((a,b)=>{
     const an=exerciseIdNumber(a.infoM||a.infoW),bn=exerciseIdNumber(b.infoM||b.infoW);
     return an-bn||String((a.infoM||a.infoW)?.id||'').localeCompare(String((b.infoM||b.infoW)?.id||''),'uk')||a.name.localeCompare(b.name,'uk');
   });
@@ -703,7 +706,7 @@ function buildEditorExerciseMenu(index){
     button.className='exercise-option'+(current?' current':'');
     button.disabled=disabled;
     const number=document.createElement('span');number.className='exercise-number';number.textContent=String((info||infoM||infoW)?.id||'—');
-    const title=document.createElement('span');title.className='exercise-title';title.textContent=/комплекс.*силов/i.test(name)?`${displayExerciseName(name)} (№${String((info||infoM||infoW)?.id||'—')})`:displayExerciseName(name);
+    const title=document.createElement('span');title.className='exercise-title';title.textContent=displayExerciseName(name);
     const status=document.createElement('span');status.className='exercise-status';status.textContent=current?'✓':usedElsewhere?'вже вибрано':unavailable?'немає нормативу':'';
     button.append(number,title,status);
     button.addEventListener('click',()=>{
