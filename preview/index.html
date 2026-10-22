@@ -22,7 +22,7 @@ legend{font-size:12px;color:var(--muted);padding:0 6px}
 .controls{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
 .row + .row{margin-top:10px}
-.age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}
+.age-grid{display:grid;grid-template-columns:repeat(7,minmax(28px,1fr));gap:6px}.age-option{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;white-space:normal}.age-option .age-number-row{display:flex;align-items:center;justify-content:center;gap:3px;font-weight:700}.age-option input{margin:0}.age-option small{font-size:9px;line-height:1.1;color:#64748b;text-align:center;white-space:nowrap}
 label.inline{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(2,6,23,.06)}
 thead{background:#f1f5f9;color:#475569;font-size:14px}
@@ -47,7 +47,7 @@ tfoot td{background:#f8fafc;font-weight:600}
 .card.sel{background:#ecfdf5;border-color:#34d399}
 .topbar2{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .hidden{display:none}
-.assessment-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.count-field{margin:0;padding:3px 8px 5px;min-width:130px}.count-field legend{font-size:11px;padding:0 4px}.count-field .controls{gap:10px}.count-field label.inline{gap:4px;font-size:13px}.exercise-pick{display:flex;align-items:center;gap:5px;width:100%;min-width:0;border:0;background:transparent;color:inherit;text-align:left;font:inherit;line-height:1.15;padding:2px 0;cursor:pointer}.exercise-pick .exercise-name{flex:1;min-width:0}.exercise-pick .pencil{flex:0 0 auto;color:#64748b;font-size:12px;white-space:nowrap}.card.disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9;border-color:#cbd5e1}.card.current{outline:2px solid #34d399;outline-offset:1px}.exercise-menu{display:flex;flex-direction:column;gap:0;max-height:min(70vh,620px);overflow:auto}.exercise-option{display:flex;align-items:center;gap:9px;text-align:left;width:100%;border:0;border-bottom:1px solid var(--br);border-radius:0;padding:10px 8px;background:#fff;color:var(--fg);font:inherit;min-height:42px}.exercise-option .exercise-number{flex:0 0 58px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}.exercise-option .exercise-title{flex:1;min-width:0}.exercise-option .exercise-status{font-size:12px;color:#64748b;flex:0 0 auto}.exercise-option:disabled{opacity:.42;background:#f8fafc}.exercise-option.current{background:#ecfdf5}.score-cell{font-variant-numeric:tabular-nums}.score-num{display:block;font-weight:750}.score-bar{height:4px;width:100%;min-width:28px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-top:4px}.score-bar-fill{height:100%;border-radius:99px;background:#64748b}.below-min .score-num{color:#dc2626}.below-min .score-bar-fill{background:#dc2626}.total-score{font-size:19px;font-weight:850;color:var(--fg);display:block}.total-score.bad{color:#dc2626}.assessment-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:42px}.assessment-grade{display:inline-grid;place-items:center;width:34px;height:34px;border:2px solid currentColor;border-radius:50%;font-size:19px;font-weight:850;line-height:1}.assessment-grade.bad{color:#dc2626}.assessment-note{display:block;font-size:10px;font-weight:500;line-height:1.1;margin-top:3px;color:#dc2626;white-space:normal;text-align:center;max-width:120px}.tfoot-score-row td:last-child,.tfoot-assessment-row td:last-child{text-align:center}
+.assessment-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.count-field{margin:0;padding:3px 8px 5px;min-width:130px}.count-field legend{font-size:11px;padding:0 4px}.count-field .controls{gap:10px}.count-field label.inline{gap:4px;font-size:13px}.exercise-pick{display:flex;align-items:center;gap:5px;width:100%;min-width:0;border:0;background:transparent;color:inherit;text-align:left;font:inherit;line-height:1.15;padding:2px 0;cursor:pointer}.exercise-pick .exercise-name{flex:1;min-width:0}.exercise-pick .pencil{flex:0 0 auto;color:#64748b;font-size:16px;font-weight:700;white-space:nowrap}.card.disabled{opacity:.45;cursor:not-allowed;background:#f1f5f9;border-color:#cbd5e1}.card.current{outline:2px solid #34d399;outline-offset:1px}.exercise-menu{display:flex;flex-direction:column;gap:0;max-height:min(70vh,620px);overflow:auto}.exercise-option{display:flex;align-items:center;gap:9px;text-align:left;width:100%;border:0;border-bottom:1px solid var(--br);border-radius:0;padding:10px 8px;background:#fff;color:var(--fg);font:inherit;min-height:42px}.exercise-option .exercise-number{flex:0 0 58px;font-weight:800;color:#475569;font-variant-numeric:tabular-nums}.exercise-option .exercise-title{flex:1;min-width:0}.exercise-option .exercise-status{font-size:12px;color:#64748b;flex:0 0 auto}.exercise-option:disabled{opacity:.42;background:#f8fafc}.exercise-option.current{background:#ecfdf5}.score-cell{font-variant-numeric:tabular-nums}.score-num{display:block;font-weight:750}.score-bar{height:4px;width:100%;min-width:28px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-top:4px}.score-bar-fill{height:100%;border-radius:99px;background:#64748b}.below-min .score-num{color:#dc2626}.below-min .score-bar-fill{background:#dc2626}.total-score{font-size:19px;font-weight:850;color:var(--fg);display:block}.total-score.bad{color:#dc2626}.assessment-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:42px}.assessment-grade{display:inline-grid;place-items:center;width:34px;height:34px;border:2px solid currentColor;border-radius:50%;font-size:19px;font-weight:850;line-height:1}.assessment-grade.bad{color:#dc2626}.assessment-note{display:block;font-size:10px;font-weight:500;line-height:1.1;margin-top:3px;color:#dc2626;white-space:nowrap;text-align:center;max-width:none;width:max-content}.tfoot-score-row td:last-child,.tfoot-assessment-row td:last-child{text-align:center}
 .warn{padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;color:#92400e;border-radius:10px;margin-top:10px}
 .small{font-size:12px}
 .result-spinner{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}
@@ -266,8 +266,9 @@ async function loadScales(url){
     if(!name) continue;
     const points = parseInt(String(pts||'').replace(/\s/g,''),10);
     if(!Number.isFinite(points)) continue;
-    if(!byName[name]) byName[name] = { id: (id||'—'), unit, map:{} };
-    byName[name].map[points] = stripQuotes(res);
+    const key=/комплексн.*силов/i.test(name)&&id?`${name} [${id}]`:name;
+    if(!byName[key]) byName[key] = { id: (id||'—'), unit, map:{} };
+    byName[key].map[points] = stripQuotes(res);
   }
   return byName;
 }
@@ -389,13 +390,17 @@ async function loadAll(){
 
 /* ===== UI: возрастные чекбоксы 1–7 ===== */
 const ageGrid = document.getElementById('ageGrid');
+const ageRanges=['20-24','25-29','30-34','35-39','40-44','45-49','50+'];
 for(let g=1;g<=7;g++){
-  const lab=document.createElement('label'); lab.className='inline';
+  const lab=document.createElement('label'); lab.className='age-option';
+  const row=document.createElement('span'); row.className='age-number-row';
   const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);updateEditorSummary();});
-  lab.appendChild(inp); lab.appendChild(document.createTextNode(' '+g)); ageGrid.appendChild(lab);
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);if(editorMode)renderRows(editorRows);else updateEditorSummary();});
+  row.appendChild(inp); row.appendChild(document.createTextNode(String(g)));
+  const range=document.createElement('small');range.textContent=ageRanges[g-1];
+  lab.appendChild(row);lab.appendChild(range);ageGrid.appendChild(lab);
 }
-document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;updateEditorSummary();}));
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(editorMode)renderRows(editorRows);else updateEditorSummary();}));
 document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;computeChoices();editorRows=[];renderPicked();buildCards();}));
 document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));
 
@@ -404,7 +409,7 @@ function currentScales(){return (sex==='M'?state.scales.M:state.scales.J)||{};}
 function makeEditorRow(name){
   const scales=currentScales();
   const info=name?(scales[name]||state.scales.M?.[name]||state.scales.J?.[name]):null;
-  return {name:name||'',displayName:name||'Выбрать упражнение…',badge:String(info?.id||'—'),unit:info?.unit||'',resultValue:0,points:0};
+  return {name:name||'',displayName:name?name.replace(/ \\[[^\\]]+\\]$/,''):'Выбрать упражнение…',badge:String(info?.id||'—'),unit:info?.unit||'',resultValue:0,points:0};
 }
 function initializeEditorRows(){
   const scales=currentScales();
@@ -668,7 +673,7 @@ function updateEditorSummary(total){
 }
 function exerciseIdNumber(info){
   const id=String(info?.id||'').trim();
-  const m=id.match(/^(\\d+)/);
+  const m=id.match(/^(\d+)/);
   return m?Number(m[1]):9999;
 }
 function buildEditorExerciseMenu(index){
@@ -695,12 +700,12 @@ function buildEditorExerciseMenu(index){
     button.className='exercise-option'+(current?' current':'');
     button.disabled=disabled;
     const number=document.createElement('span');number.className='exercise-number';number.textContent=String((info||infoM||infoW)?.id||'—');
-    const title=document.createElement('span');title.className='exercise-title';title.textContent=name;
+    const title=document.createElement('span');title.className='exercise-title';title.textContent=name.replace(/ \\[[^\\]]+\\]$/,'');
     const status=document.createElement('span');status.className='exercise-status';status.textContent=current?'✓':usedElsewhere?'вже вибрано':unavailable?'немає нормативу':'';
     button.append(number,title,status);
     button.addEventListener('click',()=>{
       if(disabled)return;
-      editorRows[index]={name,displayName:name,badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
+      editorRows[index]={name,displayName:name.replace(/ \\[[^\\]]+\\]$/,''),badge:String(info.id||'—'),unit:info.unit||'',resultValue:0,points:0};
       modalBack.style.display='none';
       renderRows(editorRows);
     });
