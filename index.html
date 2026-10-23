@@ -200,7 +200,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r54';
+const VER='r55';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -410,7 +410,7 @@ document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('ch
   if(previousRows){
     const scales=currentScales();
     const availableNames=Object.keys(scales);
-    const normalizeName=name=>displayExerciseName(name).normalize('NFC').toLocaleLowerCase('uk').replace(/\\s+/g,' ').trim();
+    const normalizeName=name=>displayExerciseName(name).normalize('NFC').toLocaleLowerCase('uk').replace(/\s+/g,' ').trim();
     editorRows=previousRows.map(row=>{
       if(!row.name) return makeEditorRow('');
       let name=scales[row.name]?row.name:availableNames.find(candidate=>normalizeName(candidate)===normalizeName(row.name));
