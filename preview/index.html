@@ -200,7 +200,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r53';
+const VER='r54';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -403,7 +403,37 @@ for(let g=1;g<=7;g++){
   lab.appendChild(row);lab.appendChild(range);ageGrid.appendChild(lab);
 }
 document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(editorMode)renderRows(editorRows);else updateEditorSummary();}));
-document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{sex=e.target.value;computeChoices();editorRows=[];renderPicked();buildCards();}));
+document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{
+  const previousRows=editorMode?editorRows.map(row=>({...row})):null;
+  sex=e.target.value;
+  computeChoices();
+  if(previousRows){
+    const scales=currentScales();
+    const availableNames=Object.keys(scales);
+    const normalizeName=name=>displayExerciseName(name).normalize('NFC').toLocaleLowerCase('uk').replace(/\\s+/g,' ').trim();
+    editorRows=previousRows.map(row=>{
+      if(!row.name) return makeEditorRow('');
+      let name=scales[row.name]?row.name:availableNames.find(candidate=>normalizeName(candidate)===normalizeName(row.name));
+      if(!name) return makeEditorRow('');
+      const info=scales[name];
+      return {
+        ...row,
+        name,
+        displayName:displayExerciseName(name),
+        badge:String(info.id||'—'),
+        unit:info.unit||'',
+        points:scoreForResult(name,info.unit||'',row.resultValue,info.map||{})
+      };
+    });
+    editorRows=editorRows.slice(0,exerciseCount);
+    while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
+    renderRows(editorRows);
+  }else{
+    editorRows=[];
+    renderPicked();
+  }
+  buildCards();
+}));
 document.querySelectorAll('input[name="grade"]').forEach(r=>r.addEventListener('change',e=>{grade=parseInt(e.target.value,10);}));
 
 const tbody=document.getElementById('tbody'), sumEl=document.getElementById('sum'), assessmentEl=document.getElementById('assessment');
