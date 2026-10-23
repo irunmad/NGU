@@ -200,7 +200,7 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 </div>
 
 <script>
-const VER='r55';
+const VER='r56';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
 let picked=[GROUPED];
@@ -760,7 +760,9 @@ function buildCards(){
   cardList.innerHTML='';
   let temp=[...picked];
   const all = state.choices || [];
-  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || /комплексн.*силов/i.test(n)));
+  // Keep the complex strength exercise visible as its own choice (including women's 14/14а).
+  // Pull-ups remain in the combined legacy option.
+  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || (sex==='M' && /комплексн.*силов/i.test(n))));
 
   const hasPull = all.some(n=>/підтяг|подтяг/i.test(n));
   const hasKsv  = all.some(n=>/комплексн.*силов/i.test(n));
