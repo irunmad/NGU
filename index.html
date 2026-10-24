@@ -13,8 +13,11 @@ html,body{height:100%}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;color:var(--fg);
 background:radial-gradient(1200px 500px at 0% -10%,var(--bg2),transparent 60%),linear-gradient(180deg,var(--bg),#fff 60%)}
 .wrap{max-width:100%;margin:0 auto;padding:12px}fieldset{background:#f5faff;border-color:#d7e7f8}input,select,textarea{accent-color:#2563eb}table{background:#f8fbff;border:1px solid #d8e8f8}thead{background:#e5f1ff;color:#35516f}tbody tr:nth-child(odd){background:#f5f9ff}tbody tr:nth-child(even){background:#edf5ff}tbody td{border-top-color:#d9e7f5}tfoot td{background:#e7f1fc;border-top-color:#cbdff2}.idpill{background:#3976b9;color:#fff;box-shadow:0 1px 3px rgba(30,64,120,.2)}.exercise-option .exercise-number{background:#3976b9}.card{background:#f7fbff;border-color:#d5e5f5}.btn{background:#f7fbff;border-color:#cddff2}.btn.primary{background:#2867a8;border-color:#245b94}
-.topbar{display:flex;gap:10px;align-items:center;margin:6px 2px 10px}
-.logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#0f172a;color:#fff;font-weight:800;font-size:14px;letter-spacing:1px}
+.topbar{display:flex;gap:8px;align-items:center;margin:6px 2px 10px}
+.logo-img{width:28px;height:28px;flex:0 0 28px;object-fit:contain;display:block}
+.topbar-title{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.topbar-title .chip{border:0;padding:0;color:#1e293b;font-size:12px;font-weight:800;line-height:1.2;white-space:normal}
+.topbar-title #dataState{font-size:11px;font-weight:600;color:#64748b}
 .chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
 fieldset{border:1px solid var(--br);border-radius:12px;padding:6px 10px;background:var(--card);width:fit-content}
 legend{font-size:14px;color:var(--muted);padding:0 6px}
@@ -90,16 +93,16 @@ tbody td:nth-child(2){font-size:13.5px;line-height:1.2}.top-controls{gap:6px;ali
 fieldset{background:#f3f8ff;border-color:#cfe1f5}
 input:not([type=radio]):not([type=checkbox]),select,textarea{background-color:#f5f9ff;border-color:#cbdff2}
 input[type=radio],input[type=checkbox]{accent-color:#3478bd}
-.idpill,.exercise-option .exercise-number{background:#3976b9!important;color:#fff;box-shadow:0 1px 3px rgba(30,64,120,.2)}
+.idpill,.exercise-option .exercise-number{background:radial-gradient(circle at 28% 20%,#fff 0%,#e8f6ff 9%,#a7d8fa 24%,#5ca2df 48%,#3478bd 72%,#174776 100%)!important;color:#fff;text-shadow:0 1px 2px rgba(10,38,70,.7);box-shadow:inset 2px 2px 4px rgba(255,255,255,.78),inset -3px -4px 6px rgba(9,39,76,.45),0 2px 4px rgba(30,64,120,.25)}
 #exerciseCountField{margin-top:4px!important}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="logo">NG</div>
-    <div class="chip">Генератор оцінки · r44</div>
-    <div id="dataState" class="chip">Завантаження…</div>
+    <img class="logo-img" src="https://web.archive.org/web/20220305120903/https://zakon.rada.gov.ua/laws/file/imgs/24/p424789n99.gif" alt="Емблема Національної гвардії України" title="Національна гвардія України">
+    <div class="topbar-title"><div class="chip">Розрахунок фізичної підготовки, версія r63</div><div id="dataState" class="chip">Завантаження…</div></div>
+    <img class="logo-img" src="https://bureviy.army/wp-content/uploads/2026/05/about-brigade.png" alt="Емблема бригади Буревій" title="Бригада Буревій">
   </div>
 
   <!-- Категория и пол — в одной строке, но отдельные блоки -->
@@ -119,8 +122,8 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
       </div>
     </fieldset>
     <fieldset class="tight editor-fieldset">
-      <legend>Режим</legend>
-      <label class="inline"><input type="checkbox" id="editorToggle"><span>Редагування</span></label>
+      <legend>Зворотній режим</legend>
+      <label class="inline"><input type="checkbox" id="editorToggle" checked><span>Редагування</span></label>
     </fieldset>
   </div>
 
@@ -208,9 +211,9 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 </div>
 
 <script>
-const VER='r62';
+const VER='r63';
 const GROUPED='__GROUP_PULL_KSV__';
-let category='2', sex='M', ageGroup=2, grade=3, editorMode=false;
+let category='2', sex='M', ageGroup=2, grade=3, editorMode=true;
 let picked=[GROUPED];
 let editorRows=[];
 let exerciseCount=3;
@@ -476,7 +479,7 @@ function renderRows(rows){
   tbody.innerHTML='';
   rows.forEach((r,index)=>{
     const resultCell=editorMode
-      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат">−</button><button type="button" class="result-tap" data-result-index="${index}" aria-label="Ввести результат">${formatEditorResult(r.name,r.unit,r.resultValue)}</button><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат">+</button></div>`
+      ? `<div class="result-spinner"><button type="button" class="spin-btn" data-spin="-1" data-index="${index}" aria-label="Зменшити результат" ${r.name?'':'disabled'}>−</button><button type="button" class="result-tap" data-result-index="${index}" aria-label="Ввести результат" ${r.name?'':'disabled'}>${r.name?formatEditorResult(r.name,r.unit,r.resultValue):'—'}</button><button type="button" class="spin-btn" data-spin="1" data-index="${index}" aria-label="Збільшити результат" ${r.name?'':'disabled'}>+</button></div>`
       : r.result;
     const exerciseCell=editorMode
       ? `<button type="button" class="exercise-pick" data-exercise-index="${index}" aria-label="Выбрать упражнение"><span class="exercise-name">${escapeHTML(r.displayName||'Выбрать упражнение…')}</span><span class="pencil" aria-hidden="true">✎</span></button>`
@@ -505,6 +508,7 @@ function renderPicked(){
   });
   renderRows(rows);
 }
+document.getElementById('editorToggle').checked=true;
 document.getElementById('editorToggle').addEventListener('change',e=>{
   editorMode=e.target.checked;
   document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
@@ -530,7 +534,7 @@ const keypadHint=document.getElementById('keypadHint');
 let keypadIndex=-1,keypadDigits='';
 function isThreeDigitExercise(row){return /функц|витривал|100\s*м|медбол|1\s*км|кілометр|километр/i.test(row.name);}
 function openResultKeypad(index){
-  const row=editorRows[index]; if(!row)return;
+  const row=editorRows[index]; if(!row?.name)return;
   keypadIndex=index; keypadDigits='';
   keypadExercise.textContent=row.displayName;
   keypadExerciseId.textContent=row.badge||'—';
@@ -585,12 +589,12 @@ document.getElementById('keypadGrid').addEventListener('click',e=>{
 });
 tbody.addEventListener('click',e=>{
   const target=e.target.closest('[data-result-index]');
-  if(target&&editorMode){openResultKeypad(Number(target.dataset.resultIndex));return;}
+  if(target&&editorMode){const row=editorRows[Number(target.dataset.resultIndex)];if(row?.name)openResultKeypad(Number(target.dataset.resultIndex));return;}
 
   const btn=e.target.closest('[data-spin]');
   if(!btn||!editorMode)return;
   const row=editorRows[Number(btn.dataset.index)];
-  if(!row)return;
+  if(!row?.name)return;
   const step=editorStep(row.name,row.unit);
   row.resultValue=Math.max(0,Math.round((row.resultValue+Number(btn.dataset.spin)*step)*1000)/1000);
   row.points=scoreForResult(row.name,row.unit,row.resultValue,currentScales()[row.name]?.map||{});
@@ -664,6 +668,7 @@ function wheelNeighbor(row,direction){
   return formatEditorResult(row.name,row.unit,n);
 }
 function nudgeWheel(row,direction,amount=1){
+  if(!row?.name)return;
   const b=wheelBounds(row),v=Number(row.resultValue)||0;
   const next=Math.max(b.min,Math.min(b.max,v+direction*b.step*amount));
   row.resultValue=Math.round(next*1000)/1000;
@@ -728,7 +733,7 @@ function updateEditorSummary(total){
     sumBar.style.width=pct(sum)+'%';
     const p3=pct(s3),p4=pct(s4),p5=pct(s5);
     const edge=(p,delta)=>Math.max(0,Math.min(100,p+delta));
-    const p3a=edge(p3,-2),p3b=edge(p3,2),p4a=edge(p4,-2),p4b=edge(p4,2),p5a=edge(p5,-2),p5b=edge(p5,1.5);
+    const p3a=edge(p3,-3),p3b=edge(p3,4),p4a=edge(p4,-4),p4b=edge(p4,3),p5a=edge(p5,-2),p5b=edge(p5,1.5);
     sumBar.style.background='linear-gradient(90deg,#111827 0%,#ef4444 '+p3a+'%,#facc15 '+p3b+'%,#facc15 '+p4a+'%,#22c55e '+p4b+'%,#22c55e '+p5a+'%,#38bdf8 '+p5+'%,#2563eb '+p5b+'%,#2563eb 100%)';
     sumBar.style.backgroundSize='min(96vw,1100px) 100%';
   }
