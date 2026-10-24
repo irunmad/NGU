@@ -720,10 +720,10 @@ function updateEditorSummary(total){
   if(sumBar){
     sumBar.style.width=pct(sum)+'%';
     const p3=pct(s3),p4=pct(s4),p5=pct(s5);
-    const p3rel=sum>0?Math.min(100,p3/pct(sum)*100):100;
-    const p4rel=sum>0?Math.min(100,p4/pct(sum)*100):100;
-    const p5rel=sum>0?Math.min(100,p5/pct(sum)*100):100;
-    sumBar.style.background='linear-gradient(90deg,#111827 0%,#ef4444 '+p3rel+'%,#facc15 '+p3rel+'%,#eab308 '+p4rel+'%,#22c55e '+p4rel+'%,#16a34a '+p5rel+'%,#2563eb '+p5rel+'%)';
+    const yellowStart=p3+(p4-p3)*0.18;
+    const greenStart=p4+(p5-p4)*0.18;
+    const blueStart=p5+(100-p5)*0.18;
+    sumBar.style.background='linear-gradient(90deg,#111827 0%,#ef4444 '+p3+'%,#facc15 '+yellowStart+'%,#eab308 '+p4+'%,#22c55e '+greenStart+'%,#16a34a '+p5+'%,#2563eb '+blueStart+'%,#2563eb 100%)';
     sumBar.style.backgroundSize='min(96vw,1100px) 100%';
   }
   if(markers)markers.innerHTML=[s3,s4,s5].filter((v,i,arr)=>Number.isFinite(v)&&v>0&&arr.indexOf(v)===i).map(v=>'<span class="total-score-marker" style="left:'+pct(v)+'%" aria-hidden="true"></span>').join('');
