@@ -100,9 +100,9 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 <body>
 <div class="wrap">
   <div class="topbar">
-    <img class="logo-img" src="https://web.archive.org/web/20220305120903/https://zakon.rada.gov.ua/laws/file/imgs/24/p424789n99.gif" alt="Емблема Національної гвардії України" title="Національна гвардія України">
-    <div class="topbar-title"><div class="chip">Розрахунок фізичної підготовки, версія r63</div><div id="dataState" class="chip">Завантаження…</div></div>
-    <img class="logo-img" src="https://bureviy.army/wp-content/uploads/2026/05/about-brigade.png" alt="Емблема бригади Буревій" title="Бригада Буревій">
+    <img class="logo-img" src="https://upload.wikimedia.org/wikipedia/commons/9/91/Emblem_of_the_National_Guard_of_Ukraine.svg" alt="Емблема Національної гвардії України" title="Національна гвардія України">
+    <div class="topbar-title"><div class="chip">Розрахунок фізичної підготовки, версія r64</div><div id="dataState" class="chip">Завантаження…</div></div>
+    <img class="logo-img" src="https://bureviy.army/wp-content/uploads/2026/06/bureviy-chevron-parade-bounding-box.svg" alt="Емблема бригади Буревій" title="Бригада Буревій">
   </div>
 
   <!-- Категория и пол — в одной строке, но отдельные блоки -->
@@ -211,13 +211,14 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 </div>
 
 <script>
-const VER='r63';
+const VER='r64';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=true;
 let picked=[GROUPED];
 let editorRows=[];
 let exerciseCount=3;
 let modalMode="normal", modalTargetIndex=-1;
+let generatedRows=null;
 const state={ thresholds:{M:[],J:[]}, scales:{M:null,J:null}, ready:false, choices:[] };
 
 const randint=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
@@ -413,10 +414,11 @@ for(let g=1;g<=7;g++){
   const range=document.createElement('small');range.textContent=ageRanges[g-1];
   lab.appendChild(row);lab.appendChild(range);ageGrid.appendChild(lab);
 }
-document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(editorMode)renderRows(editorRows);else updateEditorSummary();}));
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(!editorMode)generatedRows=null;if(editorMode)renderRows(editorRows);else renderPicked();}));
 document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{
   const previousRows=editorMode?editorRows.map(row=>({...row})):null;
   sex=e.target.value;
+  if(!editorMode)generatedRows=null;
   computeChoices();
   if(previousRows){
     const scales=currentScales();
@@ -496,7 +498,7 @@ function renderRows(rows){
   });
   const total=rows.reduce((a,r)=>a+(isFinite(+r.points)?+r.points:0),0);
   sumEl.textContent=total;
-  if(editorMode) updateEditorSummary(total);
+  updateEditorSummary(total,rows);
 }
 function renderPicked(){
   if(editorMode){initializeEditorRows();renderRows(editorRows);return;}
@@ -511,6 +513,7 @@ function renderPicked(){
 document.getElementById('editorToggle').checked=true;
 document.getElementById('editorToggle').addEventListener('change',e=>{
   editorMode=e.target.checked;
+  if(!editorMode&&generatedRows&&editorRows.length){generatedRows=editorRows.map(r=>({...r,result:formatEditorResult(r.name,r.unit,r.resultValue),points:r.points,badge:r.badge,displayName:r.displayName}));}
   document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
   document.getElementById('genBtn').classList.toggle('hidden',editorMode);
   document.getElementById('editBtn').classList.toggle('hidden',editorMode);
@@ -524,7 +527,7 @@ document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>input.ad
   if(e.target.checked) setExerciseCount(e.target.value);
   else e.target.checked=true;
 }));
-function renderCurrentRows(){if(editorMode)renderRows(editorRows);else renderPicked();}
+function renderCurrentRows(){if(editorMode)renderRows(editorRows);else if(generatedRows)renderRows(generatedRows);else renderPicked();}
 
 const keypadBack=document.getElementById('keypadBack');
 const keypadDisplay=document.getElementById('keypadDisplay');
@@ -704,9 +707,8 @@ function scoreForResult(name,unit,value,map){
   const eligible=entries.filter(x=>lower?achieved<=x.metric:achieved>=x.metric);
   return eligible.length?Math.max(...eligible.map(x=>x.points)):0;
 }
-function updateEditorSummary(total){
-  if(!editorMode) return;
-  const sum=Number.isFinite(total)?total:editorRows.reduce((a,r)=>a+(Number(r.points)||0),0);
+function updateEditorSummary(total, rows=editorRows){
+  const sum=Number.isFinite(total)?total:rows.reduce((a,r)=>a+(Number(r.points)||0),0);
   sumEl.textContent=sum;
   const th=activeThreshold();
   const sumBar=document.getElementById('totalScoreBarFill');
@@ -722,7 +724,7 @@ function updateEditorSummary(total){
   }
   const minPer=onlyNumber(th.min_per_exercise);
   const s3=onlyNumber(th.sum_for_grade_3),s4=onlyNumber(th.sum_for_grade_4),s5=onlyNumber(th.sum_for_grade_5);
-  const below=editorRows.some(r=>r.name&&(Number(r.points)||0)<minPer);
+  const below=rows.some(r=>r.name&&(Number(r.points)||0)<minPer);
   const resultGrade=below?2:(sum>=s5?5:sum>=s4?4:sum>=s3?3:2);
   const bad=resultGrade===2;
   sumEl.classList.toggle('bad',bad);
@@ -805,7 +807,7 @@ function buildCards(){
   const all = state.choices || [];
   // Keep the complex strength exercise visible as its own choice (including women's 14/14а).
   // Pull-ups remain in the combined legacy option.
-  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || (sex==='M' && /комплексн.*силов/i.test(n))));
+  const names = all.filter(n=>!(/підтяг|подтяг/i.test(n) || (sex==='M' && /комплексн.*силов/i.test(n)) || (sex==='J' && /комплексн.*силов/i.test(n) && !(/\[14а\]$/iu.test(n)||/14а/i.test(String((currentScales()[n]||{}).id||''))))));
 
   const hasPull = all.some(n=>/підтяг|подтяг/i.test(n));
   const hasKsv  = all.some(n=>/комплексн.*силов/i.test(n));
@@ -843,7 +845,7 @@ function buildCards(){
 }
 editBtn.addEventListener('click',()=>{buildCards(); modalBack.style.display='flex';});
 closeModal.addEventListener('click',()=>{modalBack.style.display='none';});
-applySel.addEventListener('click',()=>{ if(picked.length!==3) return; renderPicked(); modalBack.style.display='none';});
+applySel.addEventListener('click',()=>{ if(picked.length!==3) return; generatedRows=null;editorRows=[];renderPicked(); modalBack.style.display='none';});
 tbody.addEventListener('click',e=>{
   const pick=e.target.closest('[data-exercise-index]');
   if(pick&&editorMode){buildEditorExerciseMenu(Number(pick.dataset.exerciseIndex));return;}
@@ -943,7 +945,8 @@ function variedResult(name, unit, pts, map){
 function choosePullOrKsv(scales){
   const names = Object.keys(scales);
   const pull = names.find(n=>/підтяг|подтяг/i.test(n));
-  const ksv  = names.find(n=>/комплексн.*силов/i.test(n));
+  const ksvs = names.filter(n=>/комплексн.*силов/i.test(n));
+  const ksv = sex==='J' ? (ksvs.find(n=>/\[14а\]$/iu.test(n))||ksvs.find(n=>/14а/i.test(String(scales[n]?.id||'')) )||ksvs[0]) : (ksvs.find(n=>/\[14\]$/iu.test(n))||ksvs[0]);
   if(!pull && !ksv) return null;
   return (Math.random()<0.8 ? (pull||ksv) : (ksv||pull));
 }
@@ -1056,7 +1059,20 @@ function generate(){
   for(let attempt=0; attempt<100 && !solution; attempt++){
     solution = generateOnce();
   }
-  if(solution){ renderRows(solution); }
+  if(solution){
+    generatedRows=solution.map(r=>({...r}));
+    const scales=currentScales();
+    editorRows=solution.map(r=>{
+      const info=scales[r.name]||{};
+      let resultValue;
+      if(/км/i.test(r.name)){const parts=String(r.result).replace(':',',').split(',');resultValue=(parseInt(parts[0],10)||0)*60+(parseInt(parts[1],10)||0);}
+      else {const n=Number(String(r.result).trim().replace(',','.'));resultValue=Number.isFinite(n)?n:0;}
+      return {name:r.name,displayName:r.displayName,badge:String(info.id||r.badge||'—'),unit:info.unit||'',resultValue,points:Number(r.points)||0};
+    });
+    exerciseCount=3;
+    document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>{input.checked=Number(input.value)===3;});
+    renderRows(solution);
+  }
 }
 
 /* запуск */
