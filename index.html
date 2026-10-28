@@ -101,7 +101,7 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 <div class="wrap">
   <div class="topbar">
     <img class="logo-img" src="https://upload.wikimedia.org/wikipedia/commons/9/91/Emblem_of_the_National_Guard_of_Ukraine.svg" alt="Емблема Національної гвардії України" title="Національна гвардія України">
-    <div class="topbar-title"><div class="chip">Розрахунок фізичної підготовки, версія r65</div><div id="dataState" class="chip">Завантаження…</div></div>
+    <div class="topbar-title"><div class="chip">Розрахунок фізичної підготовки, версія r66</div><div id="dataState" class="chip">Завантаження…</div></div>
     <img class="logo-img" src="https://bureviy.army/wp-content/uploads/2026/06/bureviy-chevron-parade-bounding-box.svg" alt="Емблема бригади Буревій" title="Бригада Буревій">
   </div>
 
@@ -211,7 +211,7 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 </div>
 
 <script>
-const VER='r65';
+const VER='r66';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=true;
 let picked=[GROUPED];
@@ -864,82 +864,50 @@ function isHundred(name){ return /100\s*м/i.test(name); }
 
 /* ===== варьирование результата внутри балла (общая логика для М и Ж) ===== */
 function variedResult(name, unit, pts, map){
-  const base = stripQuotes(map[pts]);
+  const base=stripQuotes(map?.[pts]);
   if(!base) return null;
-  const next = map[pts+1];
+
+  // Use the next available higher score threshold, not necessarily pts+1:
+  // some exercises have gaps in the score table (e.g. men's medball).
+  const entries=Object.entries(map||{})
+    .map(([score,result])=>({points:Number(score),result:stripQuotes(result)}))
+    .filter(x=>Number.isFinite(x.points)&&x.result&&x.result!=='-'&&x.result!=='—')
+    .sort((a,b)=>a.points-b.points);
+  const next=entries.find(x=>x.points>Number(pts));
   if(!next) return base;
 
-  // Функциональная выносливость измеряется в метрах у мужчин и женщин.
-  // Между соседними баллами генерируем любое целое число метров.
-  if(isEndurance(name)){
-    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo=Math.min(a,b)+1, hi=Math.max(a,b);
-    if(hi<lo) return String(a);
-    return String(randint(lo,hi));
+  const baseMetric=resultMetric(name,unit,base);
+  const nextMetric=resultMetric(name,unit,next.result);
+  if(!Number.isFinite(baseMetric)||!Number.isFinite(nextMetric)) return base;
+  const lower=isLowerBetter(name,unit);
+
+  // Generate realistic intermediate results within the selected score band.
+  // The exact threshold for pts is included; the next higher score's threshold is excluded.
+  let step=1;
+  if(isMedball(name)) step=0.05;
+  else if(isHundred(name)) step=0.1;
+  else if(/км/i.test(name)||/хв/i.test(unit)) step=1;
+  else if(isEndurance(name)||isMeters(unit)||isReps(unit)) step=1;
+  else return base;
+
+  const baseK=Math.round(baseMetric/step);
+  const nextK=Math.round(nextMetric/step);
+  let lo,hi;
+  if(lower){
+    // Lower time is better: results slower than the next score, up to and including base.
+    lo=Math.min(baseK,nextK)+1;
+    hi=Math.max(baseK,nextK);
+  }else{
+    // Higher distance/repetitions is better: base threshold included, next score excluded.
+    lo=Math.min(baseK,nextK);
+    hi=Math.max(baseK,nextK)-1;
   }
+  if(hi<lo) return base;
+  const chosen=randint(lo,hi)*step;
 
-  const betterIsLower = isLowerBetter(name, unit);
-
-  // 1 км: минуты,секунды → рандом секунды
-  if(/км/i.test(name) || /хв/i.test(unit)){
-    const a=parseMinSec_csv(base).total, b=parseMinSec_csv(stripQuotes(next)).total;
-    const lo = betterIsLower ? b : a;
-    const hi = betterIsLower ? a : b;
-    if(hi<=lo) return base;
-    return toMinSec_csv(randint(lo,hi-1));
-  }
-
-  // 100 м: шаг 0.1 с
-  if(isHundred(name)){
-    const a = parseFloat(String(base).replace(',','.'));
-    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    let from,to;
-    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
-    if(to<=from) return base;
-    const step=0.1;
-    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
-    if(kTo<kFrom) return base;
-    const k=randint(kFrom,kTo);
-    return formatDecComma(k*step, 1);
-  }
-
-  // Медбол: шаг 0.05 м
-  if(isMedball(name)){
-    const a = parseFloat(String(base).replace(',','.'));
-    const b = parseFloat(String(stripQuotes(next)).replace(',','.'));
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    let from,to;
-    if(betterIsLower){ from=b; to=a; } else { from=a; to=b; }
-    if(to<=from) return base;
-    const step=0.05;
-    const kFrom=Math.ceil((from+1e-9)/step), kTo=Math.floor((to-1e-9)/step);
-    if(kTo<kFrom) return base;
-    const k=randint(kFrom,kTo);
-    return formatDecComma(k*step, 2);
-  }
-
-  // Целые метры для остальных упражнений с единицей «м»
-  if(isMeters(unit)){
-    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo=Math.min(a,b)+1, hi=Math.max(a,b);
-    if(hi<lo) return String(a);
-    return String(randint(lo,hi));
-  }
-
-  // Повторы
-  if(isReps(unit)){
-    const a=parseInt(base,10), b=parseInt(stripQuotes(next),10);
-    if(!Number.isFinite(a)||!Number.isFinite(b)) return base;
-    const lo = betterIsLower ? Math.min(a,b)+1 : Math.min(a,b);
-    const hi = betterIsLower ? Math.max(a,b) : Math.max(a,b)-1;
-    if(hi<lo) return base;
-    return String(randint(lo,hi));
-  }
-
-  return base;
+  if(/км/i.test(name)||/хв/i.test(unit)) return toMinSec_csv(chosen);
+  if(isMedball(name)||isHundred(name)) return formatDecComma(chosen, isMedball(name)?2:1);
+  return String(Math.round(chosen));
 }
 /* ===== выбор подтягивания/КСВ 80/20 ===== */
 function choosePullOrKsv(scales){
