@@ -15,9 +15,17 @@ background:radial-gradient(1200px 500px at 0% -10%,var(--bg2),transparent 60%),l
 .wrap{max-width:100%;margin:0 auto;padding:12px}fieldset{background:#f5faff;border-color:#d7e7f8}input,select,textarea{accent-color:#2563eb}table{background:#f8fbff;border:1px solid #d8e8f8}thead{background:#e5f1ff;color:#35516f}tbody tr:nth-child(odd){background:#f5f9ff}tbody tr:nth-child(even){background:#edf5ff}tbody td{border-top-color:#d9e7f5}tfoot td{background:#e7f1fc;border-top-color:#cbdff2}.idpill{background:#3976b9;color:#fff;box-shadow:0 1px 3px rgba(30,64,120,.2)}.exercise-option .exercise-number{background:#3976b9}.card{background:#f7fbff;border-color:#d5e5f5}.btn{background:#f7fbff;border-color:#cddff2}.btn.primary{background:#2867a8;border-color:#245b94}
 .topbar{display:flex;gap:8px;align-items:center;margin:6px 2px 10px}
 .logo-img{width:28px;height:28px;flex:0 0 28px;object-fit:contain;display:block}
+.logo-bureviy{width:42px;height:42px;flex:0 0 42px}
 .topbar-title{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
 .topbar-title .chip{border:0;padding:0;color:#1e293b;font-size:12px;font-weight:800;line-height:1.2;white-space:normal}
-.topbar-title #dataState{font-size:11px;font-weight:600;color:#64748b}
+.topbar-title .main-title{font-size:13px;font-weight:850}
+.topbar-title .sub-title{font-size:10px;font-weight:750;white-space:nowrap}
+.topbar-title .unit-title{font-size:9px;font-weight:650;white-space:nowrap}
+.footer-state{margin-top:14px;color:#64748b;font-size:10px;font-weight:600;text-align:left}
+.assessment-wrap{flex-direction:row;align-items:center;gap:6px}
+.assessment-note{margin-top:0;font-size:9px;line-height:1.1;white-space:nowrap;max-width:none;width:auto}
+#gradeFieldset{margin-top:4px!important}
+.idpill,.exercise-option .exercise-number{background:radial-gradient(circle at 28% 20%,#a9c9e2 0%,#6799bf 16%,#477ca6 38%,#2d5f88 65%,#173b5d 100%)!important;color:#fff;text-shadow:0 1px 2px rgba(10,38,70,.7);box-shadow:inset 1px 1px 3px rgba(255,255,255,.35),inset -3px -4px 6px rgba(9,39,76,.48),0 2px 4px rgba(30,64,120,.25)}
 .chip{padding:4px 8px;border:1px solid var(--br);border-radius:999px;font-size:12px;color:var(--muted)}
 fieldset{border:1px solid var(--br);border-radius:12px;padding:6px 10px;background:var(--card);width:fit-content}
 legend{font-size:14px;color:var(--muted);padding:0 6px}
@@ -101,8 +109,8 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 <div class="wrap">
   <div class="topbar">
     <img class="logo-img" src="https://upload.wikimedia.org/wikipedia/commons/9/91/Emblem_of_the_National_Guard_of_Ukraine.svg" alt="Емблема Національної гвардії України" title="Національна гвардія України">
-    <div class="topbar-title"><div class="chip">Розрахунок фізичної підготовки, версія r66</div><div id="dataState" class="chip">Завантаження…</div></div>
-    <img class="logo-img" src="https://bureviy.army/wp-content/uploads/2026/06/bureviy-chevron-parade-bounding-box.svg" alt="Емблема бригади Буревій" title="Бригада Буревій">
+    <div class="topbar-title"><div class="chip main-title">Розрахунок фізичної підготовки</div><div class="chip sub-title">НАЦІОНАЛЬНА ГВАРДІЯ УКРАЇНИ</div><div class="chip unit-title">відділення інструкторів, в/ч 3027 «Буревій»</div></div>
+    <img class="logo-img logo-bureviy" src="https://bureviy.army/wp-content/uploads/2026/06/bureviy-chevron-parade-bounding-box.svg" alt="Емблема бригади Буревій" title="Бригада Буревій">
   </div>
 
   <!-- Категория и пол — в одной строке, но отдельные блоки -->
@@ -122,8 +130,11 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
       </div>
     </fieldset>
     <fieldset class="tight editor-fieldset">
-      <legend>Зворотній режим</legend>
-      <label class="inline"><input type="checkbox" id="editorToggle" checked><span>Редагування</span></label>
+      <legend>Режим</legend>
+      <div class="controls">
+        <label class="inline"><input type="radio" name="mode" value="editor" checked><span>Редактор</span></label>
+        <label class="inline"><input type="radio" name="mode" value="generator"><span>Генератор</span></label>
+      </div>
     </fieldset>
   </div>
 
@@ -133,8 +144,8 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
       <legend>Вікова група (1–7)</legend>
       <div class="age-grid" id="ageGrid"></div>
     </fieldset>
-    <fieldset id="exerciseCountField" class="count-field hidden" style="margin-top:10px"><legend>Кількість вправ</legend><div class="controls"><label class="inline"><input type="checkbox" name="exerciseCount" value="3" checked><span>3</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="4"><span>4</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="5"><span>5</span></label></div></fieldset>
-    <fieldset id="gradeFieldset" style="margin-top:10px">
+    <fieldset id="exerciseCountField" class="count-field" style="margin-top:10px"><legend>Кількість вправ</legend><div class="controls"><label class="inline"><input type="checkbox" name="exerciseCount" value="3" checked><span>3</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="4"><span>4</span></label><label class="inline"><input type="checkbox" name="exerciseCount" value="5"><span>5</span></label></div></fieldset>
+    <fieldset id="gradeFieldset" class="hidden" style="margin-top:10px">
       <legend>Оцінка</legend>
       <div class="controls">
         <label class="inline"><input type="radio" name="grade" value="2"><span>2</span></label>
@@ -156,7 +167,7 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
       <tfoot>
         <tr class="tfoot-score-row"><td></td><td>Сума балів</td><td>—</td><td><span id="sum" class="total-score">0</span></td></tr>
         <tr class="total-score-scale-row"><td colspan="4"><div id="totalScoreBar" class="total-score-bar"><div id="totalScoreBarFill" class="total-score-bar-fill" style="width:0%"></div><div id="totalScoreMarkers" class="total-score-markers"></div></div><div id="totalScoreScaleLabels" class="total-score-scale-labels"></div></td></tr>
-        <tr id="assessmentRow" class="hidden tfoot-assessment-row"><td></td><td>Оцінка</td><td><div id="assessment" class="assessment-wrap"><span class="assessment-grade">—</span></div></td><td></td></tr>
+        <tr id="assessmentRow" class="tfoot-assessment-row"><td></td><td>Оцінка</td><td><div id="assessment" class="assessment-wrap"><span class="assessment-grade">—</span></div></td><td></td></tr>
       </tfoot>
     </table>
 
@@ -177,6 +188,7 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
       Імена та регістр мають збігатися точно.
     </div>
   </div>
+  <div id="dataState" class="footer-state">Завантаження вправ…</div>
 </div>
 
 <!-- Модальное окно выбора упражнений -->
@@ -211,7 +223,7 @@ input[type=radio],input[type=checkbox]{accent-color:#3478bd}
 </div>
 
 <script>
-const VER='r66';
+const VER='r67';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=true;
 let picked=[GROUPED];
@@ -389,7 +401,7 @@ async function loadAll(){
     state.scales.J = scW.status==='fulfilled' ? scW.value : {};
     state.ready = true;
     const mCount=Object.keys(state.scales.M||{}).length, wCount=Object.keys(state.scales.J||{}).length;
-    dataState.textContent = `OK: М(${mCount}) Ж(${wCount})`;
+    dataState.textContent = `завантажено вправ: М(${mCount}) Ж(${wCount})`;
     computeChoices();
     renderPicked();
     buildCards();
@@ -409,16 +421,15 @@ for(let g=1;g<=7;g++){
   const lab=document.createElement('label'); lab.className='age-option';
   const row=document.createElement('span'); row.className='age-number-row';
   const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);if(editorMode)renderRows(editorRows);else updateEditorSummary();});
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);if(editorMode)renderRows(editorRows);else if(state.ready)generate();});
   row.appendChild(inp); row.appendChild(document.createTextNode(String(g)));
   const range=document.createElement('small');range.textContent=ageRanges[g-1];
   lab.appendChild(row);lab.appendChild(range);ageGrid.appendChild(lab);
 }
-document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(!editorMode)generatedRows=null;if(editorMode)renderRows(editorRows);else renderPicked();}));
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(editorMode)renderRows(editorRows);else if(state.ready)generate();}));
 document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{
   const previousRows=editorMode?editorRows.map(row=>({...row})):null;
   sex=e.target.value;
-  if(!editorMode)generatedRows=null;
   computeChoices();
   if(previousRows){
     const scales=currentScales();
@@ -443,7 +454,7 @@ document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('ch
     renderRows(editorRows);
   }else{
     editorRows=[];
-    renderPicked();
+    if(state.ready)generate();else renderPicked();
   }
   buildCards();
 }));
@@ -510,19 +521,27 @@ function renderPicked(){
   });
   renderRows(rows);
 }
-document.getElementById('editorToggle').checked=true;
-document.getElementById('editorToggle').addEventListener('change',e=>{
-  editorMode=e.target.checked;
-  if(!editorMode&&generatedRows&&editorRows.length){generatedRows=editorRows.map(r=>({...r,result:formatEditorResult(r.name,r.unit,r.resultValue),points:r.points,badge:r.badge,displayName:r.displayName}));}
+function syncModeUI(){
   document.getElementById('gradeFieldset').classList.toggle('hidden',editorMode);
   document.getElementById('genBtn').classList.toggle('hidden',editorMode);
   document.getElementById('editBtn').classList.toggle('hidden',editorMode);
   document.getElementById('assessmentRow').classList.toggle('hidden',!editorMode);
   document.getElementById('assessment').classList.toggle('hidden',!editorMode);
   document.getElementById('exerciseCountField').classList.toggle('hidden',!editorMode);
+}
+document.querySelectorAll('input[name="mode"]').forEach(input=>input.addEventListener('change',e=>{
+  const nextEditor=e.target.value==='editor';
+  if(editorMode===nextEditor)return;
+  if(!nextEditor&&editorRows.length){
+    generatedRows=editorRows.map(r=>({...r,result:formatEditorResult(r.name,r.unit,r.resultValue),points:r.points,badge:r.badge,displayName:r.displayName}));
+  }
+  editorMode=nextEditor;
+  syncModeUI();
   if(editorMode && !editorRows.length) initializeEditorRows();
-  renderCurrentRows();
-});
+  if(!editorMode && state.ready && !generatedRows) generate();
+  else renderCurrentRows();
+}));
+syncModeUI();
 document.querySelectorAll('input[name="exerciseCount"]').forEach(input=>input.addEventListener('change',e=>{
   if(e.target.checked) setExerciseCount(e.target.value);
   else e.target.checked=true;
