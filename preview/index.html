@@ -532,8 +532,10 @@ function syncModeUI(){
 document.querySelectorAll('input[name="mode"]').forEach(input=>input.addEventListener('change',e=>{
   const nextEditor=e.target.value==='editor';
   if(editorMode===nextEditor)return;
-  if(!nextEditor&&editorRows.length){
+  if(!nextEditor&&editorRows.some(r=>r.name&&(Number(r.resultValue)>0||Number(r.points)>0))){
     generatedRows=editorRows.map(r=>({...r,result:formatEditorResult(r.name,r.unit,r.resultValue),points:r.points,badge:r.badge,displayName:r.displayName}));
+  }else if(!nextEditor){
+    generatedRows=null;
   }
   editorMode=nextEditor;
   syncModeUI();
