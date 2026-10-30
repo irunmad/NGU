@@ -236,7 +236,7 @@ label.inline:has(input:checked) span,.age-option:has(input:checked) .age-number-
 </div>
 
 <script>
-const VER='r68';
+const VER='r69';
 const GROUPED='__GROUP_PULL_KSV__';
 let category='2', sex='M', ageGroup=2, grade=3, editorMode=true;
 let picked=[GROUPED];
@@ -434,12 +434,12 @@ for(let g=1;g<=7;g++){
   const lab=document.createElement('label'); lab.className='age-option';
   const row=document.createElement('span'); row.className='age-number-row';
   const inp=document.createElement('input'); inp.type='checkbox'; inp.checked=(g===ageGroup);
-  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);if(editorMode)renderRows(editorRows);else if(state.ready)generate();});
+  inp.addEventListener('change',()=>{ageGroup=g;[...ageGrid.querySelectorAll('input')].forEach((el,idx)=>el.checked=(idx+1)===g);if(editorMode)renderRows(editorRows);else updateEditorSummary(editorRows.reduce((sum,r)=>sum+(Number(r.points)||0),0),editorRows);});
   row.appendChild(inp); row.appendChild(document.createTextNode(String(g)));
   const range=document.createElement('small');range.textContent=ageRanges[g-1];
   lab.appendChild(row);lab.appendChild(range);ageGrid.appendChild(lab);
 }
-document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(editorMode)renderRows(editorRows);else if(state.ready)generate();}));
+document.querySelectorAll('input[name="cat"]').forEach(r=>r.addEventListener('change',e=>{category=e.target.value;if(editorMode)renderRows(editorRows);else updateEditorSummary(editorRows.reduce((sum,r)=>sum+(Number(r.points)||0),0),editorRows);}));
 document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('change',e=>{
   const previousRows=editorMode?editorRows.map(row=>({...row})):null;
   sex=e.target.value;
@@ -466,8 +466,7 @@ document.querySelectorAll('input[name="sex"]').forEach(r=>r.addEventListener('ch
     while(editorRows.length<exerciseCount) editorRows.push(makeEditorRow(''));
     renderRows(editorRows);
   }else{
-    editorRows=[];
-    if(state.ready)generate();else renderPicked();
+    updateEditorSummary(editorRows.reduce((sum,r)=>sum+(Number(r.points)||0),0),editorRows);
   }
   buildCards();
 }));
